@@ -7,6 +7,7 @@ Those libs are copied to a distribution folder and linked to the ndk app.
 2. Try to build encrypto-utils for android. 
 2.1 Enable gen-lib project.
 2.2 set cmake version to system version (3.17.3)
+    Also set abiFilters in build.gradle defaultConfig ndk abiFilters to "arm64-v8a"
 2.3 Build GMP for Android
     hg clone https://gmplib.org/repo/gmp/ gmplib
     Following https://github.com/CGAL/cgal/wiki/Cross-Compilation-of-CGAL-for-Android
@@ -20,8 +21,30 @@ Those libs are copied to a distribution folder and linked to the ndk app.
 2.4 Edit findgmp(xx) cmake files
     set GMP_INCLUDE_DIR, GMP_LIBRARY to the build/include build/lib dirs from 2.3 (same for GMPXX)
 2.5 Build OPENSSL for Android.
+    Also by hand. Future: use cmake module to do this.
+    Guide followed:
+    https://proandroiddev.com/tutorial-compile-openssl-to-1-1-1-for-android-application-87137968fee
+    export ANDROID_NDK_HOME=${ANDROID_NDK}
+    export OPENSSL_DIR=/home/repos/openssl
+    # toolchain path var from 2.3 but /bin!
+    export CC=clang
+    export ANDROID_API=28
+    export architecture=android-arm64
+    ./Configure ${architecture} -D__ANDROID_API__=$ANDROID_API
+    make -j 4
+    mkdir -p output/include
+    mkdir -p output/lib/${architecture}
+    cp -RL include/openssl output/include
+    cp libcrypto.so libcrypto.a libssl.so libssl.a output/lib/android-arm64
+    set OPENSSL_ROOT_DIR/INCLUDE_DIR/CRYPTO_LIBRARY to output/...
+2.6 Build Boost for android
+    Followed https://github.com/dec1/Boost-for-Android which is a fork of https://github.com/moritz-wundke/Boost-for-Android
+    set(BOOST_ROOT "/home/marcel/repos/Boost-for-Android/build/install")
+    set(Boost_INCLUDE_DIR "${BOOST_ROOT}/include")
+    set(Boost_LIBRARY_DIR "${BOOST_ROOT}/libs/${CMAKE_ANDROID_ARCH_ABI}")
+    set(BOOST_NO_SYSTEM_PATHS ON)
+2.7 Configure/build relic.
+    compare to oliver-schick encrypto android branch.
 
-
- 
 
 3. Run jni sample program.
