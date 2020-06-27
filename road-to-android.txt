@@ -1,0 +1,39 @@
+Tasks
+
+* Hierarchy of packages to build
+* Begin with ABY's dependencies. 
+* get library to build for arm-v8a
+* create JNI entrypoints for psi example 
+* Get rid of boost::program_options
+* analyze compile options
+
+DONE:
+* Run client server on linux to try it out 
+
+Questions:
+* strip server code from android library?
+* Build in android studio or not?
+
+
+
+Packages:
+glib-2.0
+ABY
+    ext: encrypto_utils
+        ext: relic_s
+    ext: otextension
+Encrypto_utils
+gmp
+gmpxx
+ntl
+hashingtables
+libOTe
+Threads::Threads
+relic_s
+
+
+Mersenne.h uses x86 intrinsics: port via https://github.com/jratcliff63367/sse2neon
+
+
+
+

@@ -1,0 +1,27 @@
+Logbuch-BuildLibs
+
+1. Use sample of hello-libs.
+Hello-libs sample shows how to generate libs in a gen-libs subproject using gradle and cmake.
+Those libs are copied to a distribution folder and linked to the ndk app.
+
+2. Try to build encrypto-utils for android. 
+2.1 Enable gen-lib project.
+2.2 set cmake version to system version (3.17.3)
+2.3 Build GMP for Android
+    hg clone https://gmplib.org/repo/gmp/ gmplib
+    Following https://github.com/CGAL/cgal/wiki/Cross-Compilation-of-CGAL-for-Android
+    export ANDROID_NDK="/home/marcel/Android/Sdk/ndk/21.2.6472646"
+    export TOOLCHAIN_PATH=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64
+    export CC=${TOOLCHAIN_PATH}/bin/aarch64-linux-android28-clang 
+    export CXX=${TOOLCHAIN_PATH}/bin/aarch64-linux-android28-clang++
+    export PATH="${TOOLCHAIN_PATH}:${PATH}"
+    ./configure --prefix=/home/marcel/repos/gmplib/build --enable-shared --host=aarch64-linux-android --enable-cxx
+    (needed: autoreconf -i  to fix configure not found error.)
+2.4 Edit findgmp(xx) cmake files
+    set GMP_INCLUDE_DIR, GMP_LIBRARY to the build/include build/lib dirs from 2.3 (same for GMPXX)
+2.5 Build OPENSSL for Android.
+
+
+ 
+
+3. Run jni sample program.
