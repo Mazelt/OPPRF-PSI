@@ -22,6 +22,8 @@ Those libs are copied to a distribution folder and linked to the ndk app.
     set GMP_INCLUDE_DIR, GMP_LIBRARY to the build/include build/lib dirs from 2.3 (same for GMPXX)
 2.5 Build OPENSSL for Android.
     Also by hand. Future: use cmake module to do this.
+    ! checkout the right tag! not 3.0.0 alpha that is the Head on master.
+    Use: OpenSSL_1_1_1g
     Guide followed:
     https://proandroiddev.com/tutorial-compile-openssl-to-1-1-1-for-android-application-87137968fee
     export ANDROID_NDK_HOME=${ANDROID_NDK}
@@ -45,6 +47,21 @@ Those libs are copied to a distribution folder and linked to the ndk app.
     set(BOOST_NO_SYSTEM_PATHS ON)
 2.7 Configure/build relic.
     compare to oliver-schick encrypto android branch.
-
+    align relic settings to https://github.com/oliver-schick/ENCRYPTO_utils/blob/master/cmake/Modules/AddRelic.cmake
+2.8 build ENCRYPTO_utils
+    Gradle and the current setup doesn't do what i want. it seemingly just configures and doesnt make/build the lib.
+    I copied the whole encrypto project with the changed cmake files out of the android studio.
+    cmake-gui: set Openssl and Boost root dirs (works, unlike in android studio), set android vars, use android toolchain, set install prefix.
+    configure, generate
+    make
+    make install.
 
 3. Run jni sample program.
+
+2.x: the great cmake debacle.
+    Problems:   findboost/openssl are not finding cross-compiled libraries without explicitly setting all internal vars.
+                Also openssl is not packaged correctly with the library, android needs the library as part of the ndk build.
+
+        It could be related to the toolchain file of android. https://stackoverflow.com/questions/18715694/cmake-doesnt-find-boost-libraries-while-using-android-cmake-toolchain-file
+    Learn: https://pabloariasal.github.io/2018/02/19/its-time-to-do-cmake-right/
+            https://www.youtube.com/watch?v=rLopVhns4Zs&feature=youtu.be
