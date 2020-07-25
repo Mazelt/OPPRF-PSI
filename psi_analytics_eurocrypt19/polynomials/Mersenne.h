@@ -267,6 +267,25 @@ class ZpMersenneLongElement {
 
     unsigned long long high;
     unsigned long long low = _mulx_u64(elem, f2.elem, &high);
+    // _mulx_u64 intrinsic no amd-neon alternative
+    // from
+    // https://patchwork.ozlabs.org/project/gcc/patch/CO2PR07MB2694F86C1521A6607290071983F30@CO2PR07MB2694.namprd07.prod.outlook.com/
+    // +/* __int128 requires base 64-bit.  */
+    //     +extern __inline unsigned long long +
+    //     __attribute__((__gnu_inline__, __always_inline__, __artificial__)) +
+    //     _mulx_u64(unsigned long long __X, unsigned long long __Y, +unsigned long long* __P) + {
+    //   +unsigned __int128 __res = (unsigned __int128)__X * __Y;
+    //   +*__P = (unsigned long long)(__res >> 64);
+    //   +return (unsigned long long)__res;
+    //   +
+    // }
+    // Or we break the multiplication down into multipl 32-bit ints and use
+    // https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication 
+    // to break the multiplication down.
+    // SIMD instructions can be used to improve performance.
+
+    // if we can use poly intrinsics from neon:
+    // vmull_p64 and vmull_high_p64 might be useful
 
     unsigned long long low61 = (low & p);
     unsigned long long low61to64 = (low >> 61);

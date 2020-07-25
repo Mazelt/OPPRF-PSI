@@ -1,6 +1,6 @@
 [submodule "extern/ABY"]
 	path = extern/ABY
-	url = https://github.com/encryptogroup/ABY.git
+	url = https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/aby-android.git
 [submodule "extern/HashingTables"]
 	path = extern/HashingTables
 	url = https://github.com/Oleksandr-Tkachenko/HashingTables.git
