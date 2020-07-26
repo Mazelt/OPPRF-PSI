@@ -57,48 +57,34 @@ All dependencies must use the same STL. (GNU libstdc++, STLport, libc++)
 Cmake default is c++_static. Specify c++_shared,c++static,none,system using ANDROID_STL.
 
 
-libOTe
-    cryptoTools
-        boost
-        relic (or miracl)
-        disable nasm compiler, enable relic
-        Can use SSE, first disable, later port to NEON? https://github.com/DLTcollab/sse2neon For aes: https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a/
-
-libOTe with SimplestOT is using asm code with avx... not portable.
-WAIT: there is ENABLE_SIMPLESTOT and ENABLE_SIMPLESTOT_ASM. maybe we can use the plain simplest ot version.
-Otherwise:
-there exist a SimplestOT_C variant: https://github.com/dkales/SimplestOT_C
-It also works with only relic but its slower.
-So: 
-    a. Turn off SimplestOT
-    b. Use SimplestOT_C
-    c. Re-implement for ARM-neon ;)
-
-For the general compilaton:
-    a. remove all sse/x86 related stuff (see if it still compiles)
-    b. use sse2neon libraries (and add neon optimiztation).
-
-    ENABLE_RELIC, ENABLE_KKRT
-
 
 
 Packages:
 glib-2.0 (psi_analytics_eurocrypt19/CMakeLists.txt)
     not sure where this is used. Should just try compiling without it to see what is breaking
 
-libOTe (see own section)
+
 psi_analytics_eurocrypt19
     Mersenne.h uses x86 intrinsics: port via https://github.com/jratcliff63367/sse2neon
         its using the _mulx_u64 intrinsic to compute lower and higher u64 ints of a u64 int multiplication.
         there does not seem to be an intrinis for aarch64. I commented an inline function suggested in a thread.
 
 
-
-
-
-Threads::Threads
-
 works already:
+libOTe
+    cryptoTools
+    boost 
+    relic built with pthread
+    disable nasm compiler, enable relic
+    simplestot
+    Can use SSE, with
+    https://github.com/DLTcollab/sse2neon/tree/5e8330447570410b05a86efc72e80538908fb56a
+    latest commits have a bug.
+    exchange all <*intrin.h> with "sse2neon.h"
+    compiler settings -march=armv8-a+fp+simd+crypto+crc
+     https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a/
+    use c++_shared for ANDROID_STL.
+
 hashingtables (cmake, static) Used android cmake toolchain file. worked with find_package(OpenSSL CONFIG REQUIRED).
     fmt (header only! (does this require the lib on android? its marked as PRIVATE))
     openssl
@@ -116,6 +102,7 @@ ntl (hard...)
     needs static gmp (gmp.a)
     ntl 9.6.2 with ndk 21 android-28
 relic_s (already part of encrypto, static)
+Threads:threads
 
 
 
