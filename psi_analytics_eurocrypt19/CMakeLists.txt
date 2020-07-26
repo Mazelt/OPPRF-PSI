@@ -1,5 +1,4 @@
 find_package(PkgConfig REQUIRED)
-pkg_search_module(GLIB REQUIRED glib-2.0)
 
 find_package(Boost COMPONENTS program_options REQUIRED)
 
@@ -34,7 +33,6 @@ target_compile_options(psi_analytics_eurocrypt19
 target_link_libraries(psi_analytics_eurocrypt19 INTERFACE
         ABY::aby
         ENCRYPTO_utils::encrypto_utils
-        ${GLIB_LDFLAGS}
         gmp
         gmpxx
         ntl
@@ -55,7 +53,6 @@ target_include_directories(psi_analytics_eurocrypt19 PUBLIC
         ${PSI_ANALYTICS_SOURCE_ROOT}/extern/ABY/src
         ${PSI_ANALYTICS_SOURCE_ROOT}/extern/ABY/extern/ENCRYPTO_utils/src
         ${PSI_ANALYTICS_SOURCE_ROOT}/extern/HashingTables
-        ${GLIB_INCLUDE_DIRS}
         )
 
 if (PSI_ANALYTICS_BUILD_EXAMPLE)
