@@ -12,13 +12,19 @@ set(PSI_ANALYTICS_BINARY_ROOT "${CMAKE_CURRENT_BINARY_DIR}")
 
 set(Boost_USE_STATIC_LIBS OFF CACHE BOOL "Use shared boost libraries" FORCE)
 set(Boost_USE_STATIC_RUNTIME OFF CACHE BOOL "Use shared boost runtime" FORCE)
-set(BOOST_ROOT "/home/marcel/repos/Boost-for-Android/build/install")
-set(Boost_INCLUDE_DIR "${BOOST_ROOT}/include")
-set(Boost_LIBRARY_DIR "${BOOST_ROOT}/libs")
-set(BOOST_NO_SYSTEM_PATHS ON)
+set(BOOST_ROOT "${ANDROID_NDK}/boost")
+set(BOOST_LIBRARYDIR "${BOOST_ROOT}/libs/arm64-v8a")
+set(GMP_ROOT "${ANDROID_NDK}/gmp")
+set(GMPXX_ROOT "${GMP_ROOT}")
+
+set(OPENSSL_ROOT_DIR "${ANDROID_NDK}/openssl")
 
 find_package(Boost COMPONENTS system filesystem REQUIRED)
 find_package(Threads REQUIRED)
+
+# include sse2neon
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/extern/sse2neon/sse2neon.h")
+set(SSE2NEON_INCLUDED ON)
 
 set(ENABLE_RELIC ON CACHE BOOL "Build relic by default" FORCE)
 set(MULTI PTHREAD CACHE STRING "Build relic with multithreading from pthread" FORCE)
@@ -65,12 +71,12 @@ elseif (NOT HashingTables_FOUND AND NOT TARGET HashingTables::hashingtables)
 endif ()
 
 # we need to set these compile flags globally to compile compile libOTe and its dependencies
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -no-pie -pthread") # removed -maes -msse2 -msse3 -msse4.1 -mpclmul -mavx -mavx2
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -march=armv8-a+fp+simd+crypto+crc") # removed -no-pie -maes -msse2 -msse3 -msse4.1 -mpclmul -mavx -mavx2
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes")
 
 set(ENABLE_SIMPLESTOT ON CACHE BOOL "Enable Simplest OT for Base OTs" FORCE)
-set(ENABLE_SSE OFF CACHE BOOL "Enable SSE for libOTe" FORCE)
+set(ENABLE_SSE ON CACHE BOOL "Enable SSE for libOTe" FORCE)
 find_package(libOTe QUIET)
 if (libOTe_FOUND)
     message(STATUS "Found libOTe")

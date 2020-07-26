@@ -6,7 +6,7 @@ if (NOT Boost_FOUND)
     message(FATAL_ERROR "Boost library not found.  Rerun cmake with -DCMAKE_PREFIX_PATH=\"<path to lib1>;<path to lib2>\"")
 endif ()
 
-find_library(NTL_LIB ntl)
+find_library(NTL_LIB ntl PATHS "${ANDROID_NDK}/ntl/lib")
 if (NOT NTL_LIB)
     message(FATAL_ERROR "ntl library not found.  Rerun cmake with -DCMAKE_PREFIX_PATH=\"<path to lib1>;<path to lib2>\"")
 endif ()
@@ -25,9 +25,8 @@ set_target_properties(psi_analytics_eurocrypt19
 
 target_compile_options(psi_analytics_eurocrypt19
         PRIVATE
-        -march=native
-        -ffunction-sections -mpclmul -mbmi2 -maes
-        -mavx -msse2 -msse3 -msse4.1
+        -march=armv8-a+fp+simd+crypto+crc
+        -ffunction-sections 
         -Wall -Wno-strict-overflow -Wno-ignored-attributes -Wno-parentheses)
 
 target_link_libraries(psi_analytics_eurocrypt19 INTERFACE
@@ -53,6 +52,8 @@ target_include_directories(psi_analytics_eurocrypt19 PUBLIC
         ${PSI_ANALYTICS_SOURCE_ROOT}/extern/ABY/src
         ${PSI_ANALYTICS_SOURCE_ROOT}/extern/ABY/extern/ENCRYPTO_utils/src
         ${PSI_ANALYTICS_SOURCE_ROOT}/extern/HashingTables
+        ${PSI_ANALYTICS_SOURCE_ROOT}/extern/sse2neon
+        ${ANDROID_NDK}/ntl/include
         )
 
 if (PSI_ANALYTICS_BUILD_EXAMPLE)
