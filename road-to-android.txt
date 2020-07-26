@@ -1,39 +1,130 @@
-Tasks
-
-* Hierarchy of packages to build
-* Begin with ABY's dependencies. 
-* get library to build for arm-v8a
-* create JNI entrypoints for psi example 
-* Get rid of boost::program_options
-* analyze compile options
-
-DONE:
-* Run client server on linux to try it out 
-
 Questions:
 * strip server code from android library?
 * Build in android studio or not?
 
+Plan: 
+* compile libpsi_analytics_eurocrypt19 for android (arm64-v8a, android-28, OP5)
+    * requires: ABY, libOTe, HashingTables, GMP
+                Encrypto_utils, OTExtension, Relic,
+                OpenSSL, Boost, NTL
+    * use/adpat oliver-schick ABY for Android (Encrypto_utils,OTExtension)
+* Use libpsi_analytics_eurocrypt19 in mini app.
+* Design interface functions for jni
+* Create prototype app that runs psi with mobile client desktop server
+* Setup benchmarking scripts
+* Do benchmarking
+* Improve? sse for android? Update NTL
+* Evaluate
+* Mock up contact tracing app around psi.
+
+Not yet compiled to android:
+* libOTe, main psi_analytics_eurocrypt19 project.
+
+Problems: 
+* android-ndk and cmake: meh. where is boost?
+* any server-specific code needed to be scrapped from code when building for the
+android client?
+* oliver-schick forks full of unecessary changes
+* x86 intrinsics
+
+Questions:
+* Build libpsi_analytics_eurocrypt19 in android-studio with gradle-cmake or
+console cmake?
+
+
+## Static or shared library.
+
+### Runtime
+If all of your application's native code is contained in a single shared
+library, we recommend using the static runtime.
+https://developer.android.com/ndk/guides/cpp-support#static_runtimes 
+This allows the linker to inline and prune as much unused code as possible.
+
+But One Definition Rule: not safe to define more than one copy of the same
+funciton or object in a single program. When using a static runtime it is easy
+to accidentally break this rule.
+
+IN GENERAL, YOU CAN ONLY USE A STATIC VARIANT OF THE C++ RUNTIME IF YOU HAVE ONE
+AND ONLY ONE SHARED LIBRARY IN YOUR APPLICATION.
+single shared library -> use static runtime for efficiency.
+multiple shared libraries -> undefined behaviour when linking static runtime.
+
+Be safe and use shared runtime?
+
+Only one STL per App!
+All dependencies must use the same STL. (GNU libstdc++, STLport, libc++)
+
+Cmake default is c++_static. Specify c++_shared,c++static,none,system using ANDROID_STL.
+
+
 
 
 Packages:
-glib-2.0
-ABY
+glib-2.0 (psi_analytics_eurocrypt19/CMakeLists.txt)
+    not sure where this is used. Should just try compiling without it to see what is breaking
+
+
+psi_analytics_eurocrypt19
+    Mersenne.h uses x86 intrinsics: port via https://github.com/jratcliff63367/sse2neon
+        its using the _mulx_u64 intrinsic to compute lower and higher u64 ints of a u64 int multiplication.
+        there does not seem to be an intrinis for aarch64. I commented an inline function suggested in a thread.
+
+
+works already:
+libOTe
+    cryptoTools
+    boost 
+    relic built with pthread
+    disable nasm compiler, enable relic
+    simplestot
+    Can use SSE, with
+    https://github.com/DLTcollab/sse2neon/tree/5e8330447570410b05a86efc72e80538908fb56a
+    latest commits have a bug.
+    exchange all <*intrin.h> with "sse2neon.h"
+    compiler settings -march=armv8-a+fp+simd+crypto+crc
+     https://blog.michaelbrase.com/2018/05/08/emulating-x86-aes-intrinsics-on-armv8-a/
+    use c++_shared for ANDROID_STL.
+
+hashingtables (cmake, static) Used android cmake toolchain file. worked with find_package(OpenSSL CONFIG REQUIRED).
+    fmt (header only! (does this require the lib on android? its marked as PRIVATE))
+    openssl
+ABY 
     ext: encrypto_utils
         ext: relic_s
     ext: otextension
 Encrypto_utils
+    openssl
+    boost
 gmp
 gmpxx
-ntl
-hashingtables
-libOTe
-Threads::Threads
-relic_s
-
-
-Mersenne.h uses x86 intrinsics: port via https://github.com/jratcliff63367/sse2neon
-
+ntl (hard...)
+    https://github.com/nemirst/ntl-android has a port for ntl 9.6.2 ndk 14.
+    needs static gmp (gmp.a)
+    ntl 9.6.2 with ndk 21 android-28
+relic_s (already part of encrypto, static)
+Threads:threads
 
 
 
+BOOST! 
+using the android toolchain file changes many things like some root paths.
+i got back to just changing the boost library file locations so it matches the
+places where cmake looks.
+${ANDROIDNDK}/boost/ where the lib files are located with an include/ directory
+holding boost_1_72/boost/
+I used arguments '-DCMAKE_FIND_DEBUG_MODE=ON' to debug the locations
+
+
+gmp: copied gmp lib/includes to ${ANDROID_NDK}/gmp
+Edited set(GMP_LIBRARY_DIR "${CMAKE_ANDROID_NDK}/gmp/lib")
+set(GMP_INCLUDES "${CMAKE_ANDROID_NDK}/gmp/include") 
+in opprf/extern/ABY/cmake/Modules/AddGMP.cmake
+
+For aby: 
+i did rework the whol oliver-schick repo chain: ABY, Encrypto_utils,
+OTExtension.
+Cleaned it up.
+Used cmake gui to set android properties. Fixed errors.
+ABY builds now.
+Overall trick. copy dependencies  into ANDROID_NDK space and use ROOT_DIR
+properties for cmake. 
