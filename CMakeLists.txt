@@ -23,7 +23,7 @@ find_package(Boost COMPONENTS system filesystem REQUIRED)
 find_package(Threads REQUIRED)
 
 # include sse2neon
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/extern/sse2neon/sse2neon.h")
+include_directories("${PSI_ANALYTICS_SOURCE_ROOT}/extern/sse2neon/sse2neon.h")
 set(SSE2NEON_INCLUDED ON)
 
 set(ENABLE_RELIC ON CACHE BOOL "Build relic by default" FORCE)
@@ -71,7 +71,7 @@ elseif (NOT HashingTables_FOUND AND NOT TARGET HashingTables::hashingtables)
 endif ()
 
 # we need to set these compile flags globally to compile compile libOTe and its dependencies
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -march=armv8-a+fp+simd+crypto+crc") # removed -no-pie -maes -msse2 -msse3 -msse4.1 -mpclmul -mavx -mavx2
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -march=armv8-a+fp+simd+crypto+crc") # removed -no-pie -maes -msse2 -msse3 -msse4.1 -mpclmul -mavx -2
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes")
 
