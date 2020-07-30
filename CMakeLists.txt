@@ -76,7 +76,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -march=armv8-a+fp+simd+crypto+c
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes")
 
 set(ENABLE_SIMPLESTOT ON CACHE BOOL "Enable Simplest OT for Base OTs" FORCE)
-set(ENABLE_SSE ON CACHE BOOL "Enable SSE for libOTe" FORCE)
+set(ENABLE_SSE OFF CACHE BOOL "Enable SSE for libOTe" FORCE)
 find_package(libOTe QUIET)
 if (libOTe_FOUND)
     message(STATUS "Found libOTe")

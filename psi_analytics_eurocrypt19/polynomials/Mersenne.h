@@ -36,6 +36,20 @@ typedef unsigned char byte;
 #include <string>
 #include <vector>
 
+/* From
+https://patchwork.ozlabs.org/project/gcc/patch/CO2PR07MB2694F86C1521A6607290071983F30@CO2PR07MB2694.namprd07.prod.outlook.com/
+*/
+/* __int128 requires base 64-bit.  */
+extern __inline unsigned long long
+__attribute__((__gnu_inline__, __always_inline__, __artificial__))
+_mulx_u64 (unsigned long long __X, unsigned long long __Y,
+	   unsigned long long *__P)
+{
+  unsigned __int128 __res = (unsigned __int128) __X * __Y;
+  *__P = (unsigned long long) (__res >> 64);
+  return (unsigned long long) __res;
+}
+
 using namespace NTL;
 
 class ZpMersenneIntElement {

@@ -128,3 +128,11 @@ Used cmake gui to set android properties. Fixed errors.
 ABY builds now.
 Overall trick. copy dependencies  into ANDROID_NDK space and use ROOT_DIR
 properties for cmake. 
+
+
+SSE2NEON.
+This proves rather hard. Let's focus on getting mersenne to work and leave sse
+out of it. 
+When building cryptoTools with SSE the sse2neon.h has errors for calls like
+vshlq_n_s64 with a non-constant shift (n). There is a workaround (using negative
+shift with a function that can handle this variable shift but only right shift?)
