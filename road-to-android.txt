@@ -136,3 +136,17 @@ out of it.
 When building cryptoTools with SSE the sse2neon.h has errors for calls like
 vshlq_n_s64 with a non-constant shift (n). There is a workaround (using negative
 shift with a function that can handle this variable shift but only right shift?)
+
+_mm_set_epi32(4253233465, 334565, 0, 235) to osuCrypto::block :
+    4253233465  334565  0  235 
+    11111101100000110011000100111001 1010001101011100101 0 11101011_2
+    1111110110000011001100010011100100000000000001010001101011100101_2 0000000000000000000000000000000000000000000000000000000011101011_2
+    18267498634428095205 235
+
+
+since OPPRF-PSI was released, libOTe including cryptoTools were updated.
+the main updates for cryptoTools are the ENABLE_SSE capability. Before you had
+to enable sse and the sse2neon ports were not able to cover every intrinsic.
+(e.g. _mm_aesimc_si128).
+So we need the newer libOTe version. Just need to confirm that the library is
+still be able to be used in the cmake files of opprf.

@@ -26,7 +26,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "sse2neon.h"
+// #include "sse2neon.h"
 #include "NTL/ZZ.h"
 #include "NTL/ZZ_p.h"
 #include "gmp.h"

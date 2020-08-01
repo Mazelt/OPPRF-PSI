@@ -32,8 +32,8 @@ target_compile_options(psi_analytics_eurocrypt19
 target_link_libraries(psi_analytics_eurocrypt19 INTERFACE
         ABY::aby
         ENCRYPTO_utils::encrypto_utils
-        GMP::GMP
-        GMP::GMPXX
+        gmp
+        gmpxx
         ntl
         HashingTables
         libOTe
@@ -52,7 +52,6 @@ target_include_directories(psi_analytics_eurocrypt19 PUBLIC
         ${PSI_ANALYTICS_SOURCE_ROOT}/extern/ABY/src
         ${PSI_ANALYTICS_SOURCE_ROOT}/extern/ABY/extern/ENCRYPTO_utils/src
         ${PSI_ANALYTICS_SOURCE_ROOT}/extern/HashingTables
-        ${PSI_ANALYTICS_SOURCE_ROOT}/extern/sse2neon/sse2neon.h
         ${ANDROID_NDK}/ntl/include
         ${ANDROID_NDK}/gmp/include
         ${ANDROID_NDK}/boost/include

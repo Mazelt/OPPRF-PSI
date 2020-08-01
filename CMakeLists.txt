@@ -4,7 +4,7 @@ cmake_policy(SET CMP0077 NEW)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 
-option(PSI_ANALYTICS_BUILD_TESTS "Build PSI analytics tests" ON)
+option(PSI_ANALYTICS_BUILD_TESTS "Build PSI analytics tests" OFF)
 option(PSI_ANALYTICS_BUILD_EXAMPLE "Build PSI analytics example" ON)
 
 set(PSI_ANALYTICS_SOURCE_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
@@ -12,19 +12,25 @@ set(PSI_ANALYTICS_BINARY_ROOT "${CMAKE_CURRENT_BINARY_DIR}")
 
 set(Boost_USE_STATIC_LIBS OFF CACHE BOOL "Use shared boost libraries" FORCE)
 set(Boost_USE_STATIC_RUNTIME OFF CACHE BOOL "Use shared boost runtime" FORCE)
+
+# custom configuration
+# set(ANDROID_ABI "arm64-v8a" CACHE STRING "abi" FORCE)
+# set(ANDROID_NATIVE_API_LEVEL "28" CACHE STRING "level"  FORCE)
+# set(ANDROID_NDK "/home/marcel/Android/Sdk/ndk/21.3.6528147" CACHE  STRING "ndk" FORCE)
+# set(ANDROID_STL "c++_shared" CACHE STRING "stl"  FORCE)
 set(BOOST_ROOT "${ANDROID_NDK}/boost")
 set(BOOST_LIBRARYDIR "${BOOST_ROOT}/libs/arm64-v8a")
 set(GMP_ROOT "${ANDROID_NDK}/gmp")
 set(GMPXX_ROOT "${GMP_ROOT}")
-
+set(GMP_LIBRARY_DIR "${CMAKE_ANDROID_NDK}/gmp/lib")
+set(GMP_INCLUDES "${CMAKE_ANDROID_NDK}/gmp/include") 
+set(GMPXX_LIBRARY_DIR GMP_LIBRARY_DIR)
+set(GMPXX_INCLUDES GMP_INCLUDES)
 set(OPENSSL_ROOT_DIR "${ANDROID_NDK}/openssl")
 
 find_package(Boost COMPONENTS system filesystem REQUIRED)
 find_package(Threads REQUIRED)
 
-# include sse2neon
-include_directories("${PSI_ANALYTICS_SOURCE_ROOT}/extern/sse2neon/sse2neon.h")
-set(SSE2NEON_INCLUDED ON)
 
 set(ENABLE_RELIC ON CACHE BOOL "Build relic by default" FORCE)
 set(MULTI PTHREAD CACHE STRING "Build relic with multithreading from pthread" FORCE)
@@ -71,7 +77,7 @@ elseif (NOT HashingTables_FOUND AND NOT TARGET HashingTables::hashingtables)
 endif ()
 
 # we need to set these compile flags globally to compile compile libOTe and its dependencies
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -march=armv8-a+fp+simd+crypto+crc") # removed -no-pie -maes -msse2 -msse3 -msse4.1 -mpclmul -mavx -2
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread ") # removed -no-pie -maes -msse2 -msse3 -msse4.1 -mpclmul -mavx -2
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-ignored-attributes")
 
