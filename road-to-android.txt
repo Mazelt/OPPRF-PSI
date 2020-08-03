@@ -150,3 +150,24 @@ to enable sse and the sse2neon ports were not able to cover every intrinsic.
 (e.g. _mm_aesimc_si128).
 So we need the newer libOTe version. Just need to confirm that the library is
 still be able to be used in the cmake files of opprf.
+
+compiling:
+compiling brought up some issues with sse still. some fixes were necessary for
+libOTe as the test code was only built using ENABLE_ for all parts. Might have
+to find out if ENABLE_SIMPLESTOT and ENABLE_KKRT are enough. things like OOS
+were requirering intrinsics.
+Compiling the library went well but the linking for the example brought up
+issues.
+It liked with what is listed in this file:
+/home/marcel/repos/opprf/buildandroid/psi_analytics_eurocrypt19/CMakeFiles/psi_analytics_eurocrypt19_example.dir/link.txt
+had to remove -pthead and -lpthread as pthread is part of the libc in android
+(not fully supported). If this proves to be a problem we have to look into
+building relic without the MULTI=PTHREAD settting. also the main client work is
+done single-thread it should be possible to single out the client stuff and
+build wihtout pthread.
+Also -lgmp -lgmpxx and -lntl were reported as ld: cannot find ... 
+I removed the gmp* linker commands as the libraries were referenced in link.txt
+either way and added the hole path to libntl.a.
+it compiled.
+I guess I have to link all the stuff that is listed in link.txt when using the
+library in android studio.
