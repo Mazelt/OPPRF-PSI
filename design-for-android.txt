@@ -1,0 +1,24 @@
+design-for-android
+
+TODO:
+* Create Contact Tracing UI
+* Implement Overlap setting
+* Add random associated values
+* Make associates values view/editable
+* Compute risk score using PSI-SUM
+* Embed weights into the scoring
+* Prepare server binary for risk scoring.
+* prepare benchmarking (parameter combinations)
+* gather more data: profiler, memory, energy?, time, data.
+
+DONE
+* UI to configure the context
+* JNI entrypoints to configure the context
+* Threading for jni calls and UI.
+* Tweak UI: disable button after press.
+* Return/view results of execution in app.
+* Enable/Investigate own elements.
+
+Own elements: we should reuse the GeneratePseudoRandom and enable an overlap
+setting. Both client and server use the same seed with an offset that comprises
+the overlap between the two sets.

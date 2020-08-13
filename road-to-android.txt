@@ -171,3 +171,23 @@ either way and added the hole path to libntl.a.
 it compiled.
 I guess I have to link all the stuff that is listed in link.txt when using the
 library in android studio.
+
+
+android studio:
+it throws a     java.lang.UnsatisfiedLinkError: dlopen failed: library "libssl.so.1.1" not found
+https://stackoverflow.com/questions/57083946/android-openssl-1-1-1-unsatisfiedlinkerror
+https://android.googlesource.com/platform/ndk/+/master/docs/user/common_problems.md#using-mismatched-prebuilt-libraries
+need c++_shared when building openssl?
+
+libssl.so.1.1 not found:
+crypto and ssl have to be loaded in the mainactivity for it to work.
+
+network issues: added INTERNET and ACCESS_NETWORK_STATE permissions to app.
+
+how to get cerrr and cout:
+using a logging thread.
+https://stackoverflow.com/questions/10531050/redirect-stdout-to-logcat-in-android-ndk
+
+
+ITWORKS! 
+now new note file: design-for-android.txt
