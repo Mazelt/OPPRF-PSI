@@ -26,6 +26,7 @@
 #include "ENCRYPTO_utils/connection.h"
 #include "ENCRYPTO_utils/socket.h"
 #include "abycore/sharing/boolsharing.h"
+#include "abycore/sharing/arithsharing.h"
 #include "abycore/sharing/sharing.h"
 
 #include "ots/ots.h"
@@ -77,7 +78,9 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   party.ConnectAndBaseOTs();
   auto bc = dynamic_cast<BooleanCircuit *>(
       party.GetSharings().at(S_BOOL)->GetCircuitBuildRoutine());  // GMW circuit
+  auto ac = dynamic_cast<ArithmeticCircuit *>(party.GetSharings().at(S_ARITH)->GetCircuitBuildRoutine()); // ARITH circuit
   assert(bc);
+  assert(ac);
 
   share_ptr s_in_server, s_in_client;
 
@@ -109,6 +112,8 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   auto s_threshold = share_ptr(bc->PutCONSGate(context.threshold, t_bitlen));
   std::uint64_t const_zero = 0;
   auto s_zero = share_ptr(bc->PutCONSGate(const_zero, 1));
+  std::uint64_t const_two = 2;
+  auto s_two_ac = share_ptr(ac->PutCONSGate(const_two, 2));
 
   if (context.analytics_type == PsiAnalyticsContext::NONE) {
     // we want to only do benchmarking, so no additional operations
@@ -147,14 +152,19 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
     // first and gates for testing
     auto s_and_payload = share_ptr(bc->PutANDGate(s_eq.get(), s_in_payload_a.get()));
     auto s_and_payload_rotated = share_ptr(bc->PutSplitterGate(s_and_payload.get()));
-    s_out = share_ptr(bc->PutHammingWeightGate(s_and_payload_rotated.get()));
+    auto s_ham = share_ptr(bc->PutHammingWeightGate(s_and_payload_rotated.get()));
     // hamming gate (later mixed circuits for arithmethic.)
+
+    auto s_ham_ac = share_ptr(ac->PutB2AGate(s_ham.get()));
+    s_out = share_ptr(ac->PutMULCONSTGate(s_two_ac.get(),s_ham_ac.get()));
     // output gate
   } else {
     throw std::runtime_error("Encountered an unknown analytics type");
   }
 
-  if (context.analytics_type != PsiAnalyticsContext::NONE) {
+  if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM) {
+    s_out = share_ptr(ac->PutOUTGate(s_out.get(), ALL));
+  } else if (context.analytics_type != PsiAnalyticsContext::NONE) {
     s_out = share_ptr(bc->PutOUTGate(s_out.get(), ALL));
   }
 

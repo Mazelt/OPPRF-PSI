@@ -189,8 +189,8 @@ void PsiAnalyticsPayloadATest(ENCRYPTO::PsiAnalyticsContext client_context,
     client_thread.join();
     server_thread.join();
 
-    ASSERT_EQ(psi_client, plain_intersection_size);
-    ASSERT_EQ(psi_server, plain_intersection_size);
+    ASSERT_EQ(psi_client, 2 * plain_intersection_size);
+    ASSERT_EQ(psi_server, 2 * plain_intersection_size);
   }
 
   server_context.threshold = client_context.threshold = plain_intersection_size + 1;
@@ -204,8 +204,8 @@ void PsiAnalyticsPayloadATest(ENCRYPTO::PsiAnalyticsContext client_context,
     client_thread.join();
     server_thread.join();
 
-    ASSERT_EQ(psi_client, plain_intersection_size);
-    ASSERT_EQ(psi_server, plain_intersection_size);
+    ASSERT_EQ(psi_client, 2 * plain_intersection_size);
+    ASSERT_EQ(psi_server, 2 * plain_intersection_size);
   }
 }
 
