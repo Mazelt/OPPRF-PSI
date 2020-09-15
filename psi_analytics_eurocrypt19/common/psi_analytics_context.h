@@ -44,7 +44,8 @@ struct PsiAnalyticsContext {
     NONE,                // only calculate the equality of the bin elements - used for benchmarking
     THRESHOLD,           // 1 if T > PSI, 0 otherwise
     SUM,                 // number of matched elements
-    SUM_IF_GT_THRESHOLD  // number of matched elements if T > PSI, 0 otherwise
+    SUM_IF_GT_THRESHOLD, // number of matched elements if T > PSI, 0 otherwise
+    PAYLOAD_A_SUM        // sum of payload values (sender parties) of matched elements
   } analytics_type;
 
   const uint64_t maxbitlen = 61;

@@ -168,6 +168,47 @@ void PsiAnalyticsSumTest(ENCRYPTO::PsiAnalyticsContext client_context,
   }
 }
 
+void PsiAnalyticsPayloadATest(ENCRYPTO::PsiAnalyticsContext client_context,
+                              ENCRYPTO::PsiAnalyticsContext server_context) {
+  auto client_inputs = ENCRYPTO::GeneratePseudoRandomElements(client_context.neles, 15, 0);
+  auto server_inputs = ENCRYPTO::GeneratePseudoRandomElements(client_context.neles, 15, 1);
+
+  auto plain_intersection_size = ENCRYPTO::PlainIntersectionSize(client_inputs, server_inputs);
+  assert(plain_intersection_size != 0);
+  client_context.threshold = plain_intersection_size - 1;
+  server_context.threshold = client_context.threshold;
+
+  std::uint64_t psi_client, psi_server;
+
+  {
+    std::thread client_thread(
+        [&]() { psi_client = run_psi_analytics(client_inputs, client_context); });
+    std::thread server_thread(
+        [&]() { psi_server = run_psi_analytics(server_inputs, server_context); });
+
+    client_thread.join();
+    server_thread.join();
+
+    ASSERT_EQ(psi_client, plain_intersection_size);
+    ASSERT_EQ(psi_server, plain_intersection_size);
+  }
+
+  server_context.threshold = client_context.threshold = plain_intersection_size + 1;
+
+  {
+    std::thread client_thread(
+        [&]() { psi_client = run_psi_analytics(client_inputs, client_context); });
+    std::thread server_thread(
+        [&]() { psi_server = run_psi_analytics(server_inputs, server_context); });
+
+    client_thread.join();
+    server_thread.join();
+
+    ASSERT_EQ(psi_client, plain_intersection_size);
+    ASSERT_EQ(psi_server, plain_intersection_size);
+  }
+}
+
 void PsiAnalyticsTest(std::size_t elem_bitlen, bool random, uint64_t neles, uint64_t polynomialsize,
                       uint64_t nmegabins) {
   auto client_context = CreateContext(CLIENT, neles, polynomialsize, nmegabins);
@@ -194,6 +235,45 @@ void PsiAnalyticsTest(std::size_t elem_bitlen, bool random, uint64_t neles, uint
 
   ASSERT_EQ(psi_client, plain_intersection_size);
   ASSERT_EQ(psi_server, plain_intersection_size);
+}
+
+TEST(PSI_ANALYTICS, pow_2_12_payA) {
+  for (auto i = 0ull; i < ITERATIONS; ++i) {
+    // client's context
+    ENCRYPTO::PsiAnalyticsContext cc{7777,  // port
+                                     CLIENT,
+                                     61,  // bitlength
+                                     NELES_2_12,
+                                     static_cast<uint64_t>(NELES_2_12 * 1.27f),
+                                     0,  // # other party's elements
+                                     1,  // # threads
+                                     3,  // # hash functions
+                                     1,  // threshold
+                                     POLYNOMIALSIZE_2_12,
+                                     POLYNOMIALSIZE_2_12 * sizeof(uint64_t),
+                                     NMEGABINS_2_12,
+                                     1.27f,  // epsilon
+                                     "127.0.0.1",
+                                     ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM};
+
+    // server's context
+    ENCRYPTO::PsiAnalyticsContext sc{7777,  // port
+                                     SERVER,
+                                     61,  // bitlength
+                                     NELES_2_12,
+                                     static_cast<uint64_t>(NELES_2_12 * 1.27f),
+                                     0,  // # other party's elements
+                                     1,  // # threads
+                                     3,  // # hash functions
+                                     1,  // threshold
+                                     POLYNOMIALSIZE_2_12,
+                                     POLYNOMIALSIZE_2_12 * sizeof(uint64_t),
+                                     NMEGABINS_2_12,
+                                     1.27f,  // epsilon
+                                     "127.0.0.1",
+                                     ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM};
+    PsiAnalyticsPayloadATest(cc, sc);
+  }
 }
 
 TEST(PSI_ANALYTICS, pow_2_12_threshold) {
@@ -348,23 +428,23 @@ TEST(PSI_ANALYTICS, pow_2_16_probably_all_different) {
   }
 }
 
-TEST(PSI_ANALYTICS, pow_2_20_all_equal) {
-  for (auto i = 0ull; i < ITERATIONS; ++i) {
-    PsiAnalyticsTest(61, false, NELES_2_20, POLYNOMIALSIZE_2_20, NMEGABINS_2_20);
-  }
-}
+// TEST(PSI_ANALYTICS, pow_2_20_all_equal) {
+//   for (auto i = 0ull; i < ITERATIONS; ++i) {
+//     PsiAnalyticsTest(61, false, NELES_2_20, POLYNOMIALSIZE_2_20, NMEGABINS_2_20);
+//   }
+// }
 
-TEST(PSI_ANALYTICS, pow_2_20_random) {
-  for (auto i = 0ull; i < ITERATIONS; ++i) {
-    PsiAnalyticsTest(23, true, NELES_2_20, POLYNOMIALSIZE_2_20, NMEGABINS_2_20);
-  }
-}
+// TEST(PSI_ANALYTICS, pow_2_20_random) {
+//   for (auto i = 0ull; i < ITERATIONS; ++i) {
+//     PsiAnalyticsTest(23, true, NELES_2_20, POLYNOMIALSIZE_2_20, NMEGABINS_2_20);
+//   }
+// }
 
-TEST(PSI_ANALYTICS, pow_2_20_probably_all_different) {
-  for (auto i = 0ull; i < ITERATIONS; ++i) {
-    PsiAnalyticsTest(61, true, NELES_2_20, POLYNOMIALSIZE_2_20, NMEGABINS_2_20);
-  }
-}
+// TEST(PSI_ANALYTICS, pow_2_20_probably_all_different) {
+//   for (auto i = 0ull; i < ITERATIONS; ++i) {
+//     PsiAnalyticsTest(61, true, NELES_2_20, POLYNOMIALSIZE_2_20, NMEGABINS_2_20);
+//   }
+// }
 
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);

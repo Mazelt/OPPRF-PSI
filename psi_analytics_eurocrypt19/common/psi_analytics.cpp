@@ -48,6 +48,7 @@
 namespace ENCRYPTO {
 
 using share_ptr = std::shared_ptr<share>;
+using share_ptr_ptr = std::shared_ptr<std::shared_ptr<share>>;
 
 using milliseconds_ratio = std::ratio<1, 1000>;
 using duration_millis = std::chrono::duration<double, milliseconds_ratio>;
@@ -60,12 +61,15 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   const auto clock_time_total_start = std::chrono::system_clock::now();
 
   // create hash tables from the elements
+  // and create and send hints.
   std::vector<uint64_t> bins;
   if (context.role == CLIENT) {
     bins = OpprgPsiClient(inputs, context);
   } else {
     bins = OpprgPsiServer(inputs, context);
   }
+
+  std::vector<uint8_t> payload_a(bins.size(),1);
 
   // instantiate ABY
   ABYParty party(static_cast<e_role>(context.role), context.address, context.port, LT, 64,
@@ -89,15 +93,19 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   // compare outputs of OPPRFs for each bin in ABY (using SIMD)
   auto s_eq = share_ptr(bc->PutEQGate(s_in_server.get(), s_in_client.get()));
 
-  std::vector<share_ptr> bin_results;
-  for (uint32_t i = 0; i < bins.size(); ++i) {
-    uint32_t pos[] = {i};
-    bin_results.emplace_back(bc->PutSubsetGate(s_eq.get(), pos, 1));
-    bin_results.at(i) = share_ptr(bc->PutOUTGate(bin_results.at(i).get(), ALL));
-  }
+  // bin_result might just be for debugging. not used anywhere else right now.
+  // std::vector<share_ptr> bin_results;
+  // for (uint32_t i = 0; i < bins.size(); ++i) {
+  //   uint32_t pos[] = {i};
+  //   // subset gate to get pos({i}) of simd input at bin_results.at(i)
+  //   bin_results.emplace_back(bc->PutSubsetGate(s_eq.get(), pos, 1));
+  //   // output eq result share at bin_results.at(i) for both roles
+  //   bin_results.at(i) = share_ptr(bc->PutOUTGate(bin_results.at(i).get(), ALL));
+  // }
 
   share_ptr s_out;
   auto t_bitlen = static_cast<std::size_t>(std::ceil(std::log2(context.threshold)));
+  // constant gate with threshold as value
   auto s_threshold = share_ptr(bc->PutCONSGate(context.threshold, t_bitlen));
   std::uint64_t const_zero = 0;
   auto s_zero = share_ptr(bc->PutCONSGate(const_zero, 1));
@@ -105,17 +113,43 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   if (context.analytics_type == PsiAnalyticsContext::NONE) {
     // we want to only do benchmarking, so no additional operations
   } else if (context.analytics_type == PsiAnalyticsContext::THRESHOLD) {
+    // split up the simd s_eq result
     auto s_eq_rotated = share_ptr(bc->PutSplitterGate(s_eq.get()));
+    // hamming weight, sum of ones in the input
     s_out = share_ptr(bc->PutHammingWeightGate(s_eq_rotated.get()));
+    // greater than gate (compare with threshold)
     s_out = share_ptr(bc->PutGTGate(s_out.get(), s_threshold.get()));
   } else if (context.analytics_type == PsiAnalyticsContext::SUM) {
+    // same as threshold but without the GT output.
+
     auto s_eq_rotated = share_ptr(bc->PutSplitterGate(s_eq.get()));
     s_out = share_ptr(bc->PutHammingWeightGate(s_eq_rotated.get()));
   } else if (context.analytics_type == PsiAnalyticsContext::SUM_IF_GT_THRESHOLD) {
     auto s_eq_rotated = share_ptr(bc->PutSplitterGate(s_eq.get()));
     s_out = share_ptr(bc->PutHammingWeightGate(s_eq_rotated.get()));
     auto s_gt_t = share_ptr(bc->PutGTGate(s_out.get(), s_threshold.get()));
+
+    // multiplexer gate for selecting zero or sum output depending on threshold
+    // reached GT result.
     s_out = share_ptr(bc->PutMUXGate(s_out.get(), s_zero.get(), s_gt_t.get()));
+  } else if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM) {
+
+    share_ptr s_in_payload_a;
+    // get payload shares from client
+    if (context.role == SERVER) {
+      s_in_payload_a = share_ptr(bc->PutDummySIMDINGate(payload_a.size(), 1));
+    } else {
+      s_in_payload_a = share_ptr(bc->PutSIMDINGate(payload_a.size(),payload_a.data(), 1, CLIENT));
+    }
+    // input only payloads of relevant elements into the next function gate
+    // multi-muxgate with payloads, const 0 shares and s_eq_r as selector.
+    // bc->PutMultiMUXGate()
+    // first and gates for testing
+    auto s_and_payload = share_ptr(bc->PutANDGate(s_eq.get(), s_in_payload_a.get()));
+    auto s_and_payload_rotated = share_ptr(bc->PutSplitterGate(s_and_payload.get()));
+    s_out = share_ptr(bc->PutHammingWeightGate(s_and_payload_rotated.get()));
+    // hamming gate (later mixed circuits for arithmethic.)
+    // output gate
   } else {
     throw std::runtime_error("Encountered an unknown analytics type");
   }
@@ -165,6 +199,7 @@ std::vector<uint64_t> OpprgPsiClient(const std::vector<uint64_t> &elements,
   context.timings.hashing = hashing_duration.count();
   const auto oprf_start_time = std::chrono::system_clock::now();
 
+  // mask is the prf result for a bin
   std::vector<uint64_t> masks_with_dummies = ot_receiver(cuckoo_table_v, context);
   
   const auto oprf_end_time = std::chrono::system_clock::now();
@@ -232,6 +267,7 @@ std::vector<uint64_t> OpprgPsiServer(const std::vector<uint64_t> &elements,
 
   const auto hashing_start_time = std::chrono::system_clock::now();
 
+  // hashing server elements using simple hashing into bins.
   ENCRYPTO::SimpleTable simple_table(static_cast<std::size_t>(context.nbins));
   simple_table.SetNumOfHashFunctions(context.nfuns);
   simple_table.Insert(elements);
@@ -247,6 +283,8 @@ std::vector<uint64_t> OpprgPsiServer(const std::vector<uint64_t> &elements,
 
   const auto oprf_start_time = std::chrono::system_clock::now();
 
+  // oprf with receiver to evaluate (per bin) eachothers items. (same bin, same key)
+  // masks are the oprf results of simple table elements.
   auto masks = ot_sender(simple_table_v, context);
 
   const auto oprf_end_time = std::chrono::system_clock::now();
@@ -255,6 +293,8 @@ std::vector<uint64_t> OpprgPsiServer(const std::vector<uint64_t> &elements,
 
   const auto polynomials_start_time = std::chrono::system_clock::now();
 
+  // creating hints of size context.polynomialsize for each megabin.
+  // Hints are a polynomial interpolated on the (element, oprf-result XOR tj) pairs.
   std::vector<uint64_t> polynomials(context.nmegabins * context.polynomialsize, 0);
   std::vector<uint64_t> content_of_bins(context.nbins);
 
@@ -262,6 +302,7 @@ std::vector<uint64_t> OpprgPsiServer(const std::vector<uint64_t> &elements,
   std::uniform_int_distribution<uint64_t> dist(0,
                                                (1ull << context.maxbitlen) - 1);  // [0,2^elebitlen)
 
+  // T set.
   // generate random numbers to use for mapping the polynomial to
   std::generate(content_of_bins.begin(), content_of_bins.end(), [&]() { return dist(urandom); });
   {
@@ -338,7 +379,7 @@ void InterpolatePolynomialsPaddedWithDummies(
       if ((*masks_for_elems_in_bin).size() > 0) {
         for (auto &mask : *masks_for_elems_in_bin) {
           X.at(i).elem = mask & __61_bit_mask;
-          Y.at(i).elem = X.at(i).elem ^ *random_value_in_bin;
+          Y.at(i).elem = X.at(i).elem ^ *random_value_in_bin;  // random_value_in_bin is t_j
           ++i;
         }
       }
@@ -352,8 +393,10 @@ void InterpolatePolynomialsPaddedWithDummies(
     }
   }
 
+  // interpolation
   Poly::interpolateMersenne(coeff, X, Y);
 
+  // save polynomial in polynomial_offset var
   auto coefficient = coeff.begin();
   for (auto i = 0ull; i < coeff.size(); ++i, ++polynomial_offset, ++coefficient) {
     *polynomial_offset = (*coefficient).elem;
