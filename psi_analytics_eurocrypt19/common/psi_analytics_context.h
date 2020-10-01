@@ -49,7 +49,7 @@ struct PsiAnalyticsContext {
   } analytics_type;
 
   const uint64_t maxbitlen = 61;
-  const uint64_t payload_maxbitlen = 32;
+  const uint64_t payload_maxbitlen = 1;
 
   struct {
     double hashing;

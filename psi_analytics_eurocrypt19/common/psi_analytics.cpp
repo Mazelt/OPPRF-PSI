@@ -55,12 +55,12 @@ using milliseconds_ratio = std::ratio<1, 1000>;
 using duration_millis = std::chrono::duration<double, milliseconds_ratio>;
 
 uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context) {
-  std::vector<std::uint32_t> payload_a_dummy;
+  std::vector<std::uint64_t> payload_a_dummy;
   return run_psi_analytics(inputs, context, payload_a_dummy);
 }
 
 uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
-                           const std::vector<std::uint32_t> &payload_input_a) {
+                           const std::vector<std::uint64_t> &payload_input_a) {
   // establish network connection
   std::unique_ptr<CSocket> sock =
       EstablishConnection(context.address, context.port, static_cast<e_role>(context.role));
@@ -157,7 +157,7 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
     if (context.role == SERVER) {
       s_in_payload_a = share_ptr(bc->PutDummySIMDINGate(bins.size(), 1));
     } else {
-      std::vector<uint32_t> payload_a(bins.size(), 0);
+      std::vector<uint64_t> payload_a(bins.size(), 0);
       for (auto i=0ull; i < payload_a_index.size(); ++i){
         if (payload_a_index[i] > bins.size()) {
           continue;
@@ -172,7 +172,7 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
       //   std::cout << payload_a[i] << std::endl;
       // }
       s_in_payload_a = share_ptr(
-      bc->PutSIMDINGate(payload_a.size(), payload_a.data(), 1, CLIENT));
+      bc->PutSIMDINGate(payload_a.size(), payload_a.data(), context.payload_maxbitlen, CLIENT));
     }
     // input only payloads of relevant elements into the next function gate
     // multi-muxgate with payloads, const 0 shares and s_eq_r as selector.
