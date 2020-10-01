@@ -70,11 +70,17 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   // create hash tables from the elements
   // and create and send hints.
   std::vector<uint64_t> bins;
+  std::vector<uint64_t> payload_a_index;
+
   if (context.role == CLIENT) {
-    bins = OpprgPsiClient(inputs, context);
-    // for (auto i = 0ull; i<10; i++) {
-    //   std::cerr << "--" << bins[i];
-    // }
+    std::vector<std::pair<uint64_t, uint64_t>> bins_index;
+    bins_index = OpprgPsiClient(inputs, context);
+    for (auto i = 0ull; i < bins_index.size(); ++i) {
+       bins.push_back(bins_index[i].first);
+       if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM) {
+         payload_a_index.push_back(bins_index[i].second);
+       }
+    }
   } else {
     bins = OpprgPsiServer(inputs, context);
   }
@@ -201,23 +207,7 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   return output;
 }
 
-std::vector<uint64_t> OpprgPsiClient(const std::vector<uint64_t> &elements,
-                                     PsiAnalyticsContext &context) {
-  std::vector<std::pair<uint64_t,uint64_t>> bins_index;
-  bins_index = OpprgPsiClientIndex(elements, context);
-  // std::cerr << "bins_index " << std::endl;
-  // for (auto i = 0ull; i < 10; i++) {
-  //   std::cerr << bins_index[i].first << " " << bins_index[i].second << std::endl;
-  // }
-
-  std::vector<uint64_t> bins;
-  for (auto i = 0ull; i < bins_index.size(); ++i) {
-    bins.push_back(bins_index[i].first);
-  }
-  return bins;
-}
-
-std::vector<std::pair<uint64_t,uint64_t>> OpprgPsiClientIndex(const std::vector<uint64_t> &elements,
+std::vector<std::pair<uint64_t,uint64_t>> OpprgPsiClient(const std::vector<uint64_t> &elements,
                                          PsiAnalyticsContext &context) {
   const auto start_time = std::chrono::system_clock::now();
   const auto hashing_start_time = std::chrono::system_clock::now();

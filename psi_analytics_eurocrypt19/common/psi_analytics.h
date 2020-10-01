@@ -36,10 +36,8 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
 uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
                            const std::vector<std::uint8_t> &payload_input_a);
 
-std::vector<uint64_t> OpprgPsiClient(const std::vector<uint64_t> &elements,
-                                     PsiAnalyticsContext &context);
-std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClientIndex(const std::vector<uint64_t> &elements,
-                                                                PsiAnalyticsContext &context);
+std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClient(const std::vector<uint64_t> &elements,
+                                                          PsiAnalyticsContext &context);
 
 std::vector<uint64_t> OpprgPsiServer(const std::vector<uint64_t> &elements,
                                          PsiAnalyticsContext &context);
