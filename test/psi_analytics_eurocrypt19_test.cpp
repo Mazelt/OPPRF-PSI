@@ -178,26 +178,12 @@ void PsiAnalyticsPayloadATest(ENCRYPTO::PsiAnalyticsContext client_context,
   client_context.threshold = plain_intersection_size - 1;
   server_context.threshold = client_context.threshold;
 
+  std::vector<uint8_t> payload_a(client_context.neles, 1);
   std::uint64_t psi_client, psi_server;
 
   {
     std::thread client_thread(
-        [&]() { psi_client = run_psi_analytics(client_inputs, client_context); });
-    std::thread server_thread(
-        [&]() { psi_server = run_psi_analytics(server_inputs, server_context); });
-
-    client_thread.join();
-    server_thread.join();
-
-    ASSERT_EQ(psi_client, 2 * plain_intersection_size);
-    ASSERT_EQ(psi_server, 2 * plain_intersection_size);
-  }
-
-  server_context.threshold = client_context.threshold = plain_intersection_size + 1;
-
-  {
-    std::thread client_thread(
-        [&]() { psi_client = run_psi_analytics(client_inputs, client_context); });
+        [&]() { psi_client = run_psi_analytics(client_inputs, client_context, payload_a); });
     std::thread server_thread(
         [&]() { psi_server = run_psi_analytics(server_inputs, server_context); });
 
@@ -237,44 +223,44 @@ void PsiAnalyticsTest(std::size_t elem_bitlen, bool random, uint64_t neles, uint
   ASSERT_EQ(psi_server, plain_intersection_size);
 }
 
-TEST(PSI_ANALYTICS, pow_2_12_payA) {
-  for (auto i = 0ull; i < ITERATIONS; ++i) {
-    // client's context
-    ENCRYPTO::PsiAnalyticsContext cc{7777,  // port
-                                     CLIENT,
-                                     61,  // bitlength
-                                     NELES_2_12,
-                                     static_cast<uint64_t>(NELES_2_12 * 1.27f),
-                                     0,  // # other party's elements
-                                     1,  // # threads
-                                     3,  // # hash functions
-                                     1,  // threshold
-                                     POLYNOMIALSIZE_2_12,
-                                     POLYNOMIALSIZE_2_12 * sizeof(uint64_t),
-                                     NMEGABINS_2_12,
-                                     1.27f,  // epsilon
-                                     "127.0.0.1",
-                                     ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM};
+// TEST(PSI_ANALYTICS, pow_2_12_payA) {
+//   for (auto i = 0ull; i < ITERATIONS; ++i) {
+//     // client's context
+//     ENCRYPTO::PsiAnalyticsContext cc{7777,  // port
+//                                      CLIENT,
+//                                      61,  // bitlength
+//                                      NELES_2_12,
+//                                      static_cast<uint64_t>(NELES_2_12 * 1.27f),
+//                                      0,  // # other party's elements
+//                                      1,  // # threads
+//                                      3,  // # hash functions
+//                                      1,  // threshold
+//                                      POLYNOMIALSIZE_2_12,
+//                                      POLYNOMIALSIZE_2_12 * sizeof(uint64_t),
+//                                      NMEGABINS_2_12,
+//                                      1.27f,  // epsilon
+//                                      "127.0.0.1",
+//                                      ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM};
 
-    // server's context
-    ENCRYPTO::PsiAnalyticsContext sc{7777,  // port
-                                     SERVER,
-                                     61,  // bitlength
-                                     NELES_2_12,
-                                     static_cast<uint64_t>(NELES_2_12 * 1.27f),
-                                     0,  // # other party's elements
-                                     1,  // # threads
-                                     3,  // # hash functions
-                                     1,  // threshold
-                                     POLYNOMIALSIZE_2_12,
-                                     POLYNOMIALSIZE_2_12 * sizeof(uint64_t),
-                                     NMEGABINS_2_12,
-                                     1.27f,  // epsilon
-                                     "127.0.0.1",
-                                     ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM};
-    PsiAnalyticsPayloadATest(cc, sc);
-  }
-}
+//     // server's context
+//     ENCRYPTO::PsiAnalyticsContext sc{7777,  // port
+//                                      SERVER,
+//                                      61,  // bitlength
+//                                      NELES_2_12,
+//                                      static_cast<uint64_t>(NELES_2_12 * 1.27f),
+//                                      0,  // # other party's elements
+//                                      1,  // # threads
+//                                      3,  // # hash functions
+//                                      1,  // threshold
+//                                      POLYNOMIALSIZE_2_12,
+//                                      POLYNOMIALSIZE_2_12 * sizeof(uint64_t),
+//                                      NMEGABINS_2_12,
+//                                      1.27f,  // epsilon
+//                                      "127.0.0.1",
+//                                      ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM};
+//     PsiAnalyticsPayloadATest(cc, sc);
+//   }
+// }
 
 TEST(PSI_ANALYTICS, pow_2_12_threshold) {
   for (auto i = 0ull; i < ITERATIONS; ++i) {

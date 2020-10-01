@@ -33,11 +33,16 @@ namespace ENCRYPTO {
 
 uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context);
 
+uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
+                           const std::vector<std::uint8_t> &payload_input_a);
+
 std::vector<uint64_t> OpprgPsiClient(const std::vector<uint64_t> &elements,
                                      PsiAnalyticsContext &context);
+std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClientIndex(const std::vector<uint64_t> &elements,
+                                                                PsiAnalyticsContext &context);
 
 std::vector<uint64_t> OpprgPsiServer(const std::vector<uint64_t> &elements,
-                                     PsiAnalyticsContext &context);
+                                         PsiAnalyticsContext &context);
 
 void InterpolatePolynomials(std::vector<uint64_t> &polynomials,
                             std::vector<uint64_t> &content_of_bins,

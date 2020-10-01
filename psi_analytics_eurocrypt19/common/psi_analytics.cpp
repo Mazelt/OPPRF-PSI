@@ -55,6 +55,12 @@ using milliseconds_ratio = std::ratio<1, 1000>;
 using duration_millis = std::chrono::duration<double, milliseconds_ratio>;
 
 uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context) {
+  std::vector<std::uint8_t> payload_a_dummy;
+  return run_psi_analytics(inputs, context, payload_a_dummy);
+}
+
+uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
+                           const std::vector<std::uint8_t> &payload_input_a) {
   // establish network connection
   std::unique_ptr<CSocket> sock =
       EstablishConnection(context.address, context.port, static_cast<e_role>(context.role));
@@ -66,11 +72,12 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   std::vector<uint64_t> bins;
   if (context.role == CLIENT) {
     bins = OpprgPsiClient(inputs, context);
+    // for (auto i = 0ull; i<10; i++) {
+    //   std::cerr << "--" << bins[i];
+    // }
   } else {
     bins = OpprgPsiServer(inputs, context);
   }
-
-  std::vector<uint8_t> payload_a(bins.size(),1);
 
   // instantiate ABY
   ABYParty party(static_cast<e_role>(context.role), context.address, context.port, LT, 64,
@@ -138,13 +145,20 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
     // reached GT result.
     s_out = share_ptr(bc->PutMUXGate(s_out.get(), s_zero.get(), s_gt_t.get()));
   } else if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM) {
-
     share_ptr s_in_payload_a;
+    
     // get payload shares from client
     if (context.role == SERVER) {
-      s_in_payload_a = share_ptr(bc->PutDummySIMDINGate(payload_a.size(), 1));
+      s_in_payload_a = share_ptr(bc->PutDummySIMDINGate(bins.size(), 1));
     } else {
-      s_in_payload_a = share_ptr(bc->PutSIMDINGate(payload_a.size(),payload_a.data(), 1, CLIENT));
+      // std::vector<uint64_t> payload_a(bins.size(),1);
+      if (payload_input_a.size() != bins.size()) {
+        std::cerr << "[Error] payload of size " << payload_input_a.size() << "  " << bins.size() <<  " problem\n";
+      }
+      std::vector<uint8_t> payload_a;
+      payload_a = payload_input_a;
+      s_in_payload_a = share_ptr(
+      bc->PutSIMDINGate(payload_a.size(), payload_a.data(), 1, CLIENT));
     }
     // input only payloads of relevant elements into the next function gate
     // multi-muxgate with payloads, const 0 shares and s_eq_r as selector.
@@ -189,6 +203,22 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
 
 std::vector<uint64_t> OpprgPsiClient(const std::vector<uint64_t> &elements,
                                      PsiAnalyticsContext &context) {
+  std::vector<std::pair<uint64_t,uint64_t>> bins_index;
+  bins_index = OpprgPsiClientIndex(elements, context);
+  // std::cerr << "bins_index " << std::endl;
+  // for (auto i = 0ull; i < 10; i++) {
+  //   std::cerr << bins_index[i].first << " " << bins_index[i].second << std::endl;
+  // }
+
+  std::vector<uint64_t> bins;
+  for (auto i = 0ull; i < bins_index.size(); ++i) {
+    bins.push_back(bins_index[i].first);
+  }
+  return bins;
+}
+
+std::vector<std::pair<uint64_t,uint64_t>> OpprgPsiClientIndex(const std::vector<uint64_t> &elements,
+                                         PsiAnalyticsContext &context) {
   const auto start_time = std::chrono::system_clock::now();
   const auto hashing_start_time = std::chrono::system_clock::now();
 
@@ -258,17 +288,22 @@ std::vector<uint64_t> OpprgPsiClient(const std::vector<uint64_t> &elements,
   const duration_millis eval_poly_duration = eval_poly_end_time - eval_poly_start_time;
   context.timings.polynomials = eval_poly_duration.count();
 
-  std::vector<uint64_t> raw_bin_result;
-  raw_bin_result.reserve(X.size());
+  std::vector<uint64_t> index_table = cuckoo_table.GetIndex();
+  std::vector<std::pair<uint64_t, uint64_t>> bins_index_result;
+  bins_index_result.reserve(X.size());
   for (auto i = 0ull; i < X.size(); ++i) {
-    raw_bin_result.push_back(X[i].elem ^ Y[i].elem);
+    bins_index_result.push_back({X[i].elem ^ Y[i].elem, index_table[i]});
   }
+  // std::cerr << "bin_index_result right after pushback" << std::endl;
+  // for (auto i = 0ull; i < 10; i++) {
+  //   std::cerr << bins_index_result[i].first << " " << bins_index_result[i].second << std::endl;
+  // }
 
   const auto end_time = std::chrono::system_clock::now();
   const duration_millis total_duration = end_time - start_time;
   context.timings.total = total_duration.count();
 
-  return raw_bin_result;
+  return bins_index_result;
 }
 
 std::vector<uint64_t> OpprgPsiServer(const std::vector<uint64_t> &elements,
