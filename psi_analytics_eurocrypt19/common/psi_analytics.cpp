@@ -55,12 +55,12 @@ using milliseconds_ratio = std::ratio<1, 1000>;
 using duration_millis = std::chrono::duration<double, milliseconds_ratio>;
 
 uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context) {
-  std::vector<std::uint8_t> payload_a_dummy;
+  std::vector<std::uint32_t> payload_a_dummy;
   return run_psi_analytics(inputs, context, payload_a_dummy);
 }
 
 uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
-                           const std::vector<std::uint8_t> &payload_input_a) {
+                           const std::vector<std::uint32_t> &payload_input_a) {
   // establish network connection
   std::unique_ptr<CSocket> sock =
       EstablishConnection(context.address, context.port, static_cast<e_role>(context.role));
@@ -71,13 +71,13 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   // and create and send hints.
   std::vector<uint64_t> bins;
   std::vector<uint64_t> payload_a_index;
-
   if (context.role == CLIENT) {
     std::vector<std::pair<uint64_t, uint64_t>> bins_index;
     bins_index = OpprgPsiClient(inputs, context);
     for (auto i = 0ull; i < bins_index.size(); ++i) {
        bins.push_back(bins_index[i].first);
        if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM) {
+         payload_a_index.reserve(bins_index.size());
          payload_a_index.push_back(bins_index[i].second);
        }
     }
@@ -157,12 +157,20 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
     if (context.role == SERVER) {
       s_in_payload_a = share_ptr(bc->PutDummySIMDINGate(bins.size(), 1));
     } else {
-      // std::vector<uint64_t> payload_a(bins.size(),1);
-      if (payload_input_a.size() != bins.size()) {
-        std::cerr << "[Error] payload of size " << payload_input_a.size() << "  " << bins.size() <<  " problem\n";
+      std::vector<uint32_t> payload_a(bins.size(), 0);
+      for (auto i=0ull; i < payload_a_index.size(); ++i){
+        if (payload_a_index[i] > bins.size()) {
+          continue;
+        }
+        payload_a[i] = payload_input_a[payload_a_index[i]];
       }
-      std::vector<uint8_t> payload_a;
-      payload_a = payload_input_a;
+      if (payload_a.size() != bins.size()) {
+        std::cerr << "[Error] payload of size " << payload_a.size() << "  " << bins.size() <<  " problem\n";
+      }
+      // std::cout << "payload bucket matchings" << std::endl;
+      // for (auto i = 0ull; i < 100; i++) {
+      //   std::cout << payload_a[i] << std::endl;
+      // }
       s_in_payload_a = share_ptr(
       bc->PutSIMDINGate(payload_a.size(), payload_a.data(), 1, CLIENT));
     }
