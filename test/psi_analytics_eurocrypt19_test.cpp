@@ -218,14 +218,15 @@ void PsiAnalyticsPayloadATest(ENCRYPTO::PsiAnalyticsContext client_context,
 
   auto plain_intersection_size = ENCRYPTO::PlainIntersectionSize(client_inputs, server_inputs);
   assert(plain_intersection_size != 0);
-  std::vector<uint64_t> payload_a = GenerateRandomPayload(client_context.neles, client_context.payload_maxbitlen, 3);
+  std::vector<uint64_t> payload_a = GenerateRandomPayload(client_context.neles, client_context.payload_maxbitlen, 2);
+
+  // std::cerr << "payload" << std::endl;
+  // for (auto i = 0ull; i < 8; i++) {
+  //   std::cerr << payload_a[i] << std::endl;
+  // }
   auto plain_intersection_payload_sum =
       PlaintextPayloadASum(client_inputs, server_inputs, payload_a);
 
-  // std::cerr << "payload" << std::endl;
-  // for (auto i = 0ull; i < 10; i++) {
-  //   std::cerr << payload_a[i] << std::endl;
-  // }
   std::uint64_t psi_client, psi_server;
 
   {

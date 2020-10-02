@@ -155,7 +155,7 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
     
     // get payload shares from client
     if (context.role == SERVER) {
-      s_in_payload_a = share_ptr(bc->PutDummySIMDINGate(bins.size(), 1));
+      s_in_payload_a = share_ptr(bc->PutDummySIMDINGate(bins.size(), context.payload_maxbitlen));
     } else {
       std::vector<uint64_t> payload_a(bins.size(), 0);
       for (auto i=0ull; i < payload_a_index.size(); ++i){
@@ -178,7 +178,7 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
     if (context.payload_maxbitlen == 1) {
       s_out = BuildIntersectionSumHamming(s_in_payload_a, s_eq, (BooleanCircuit*) bc);
     } else {
-      throw std::runtime_error("Not implemented error! no >1 bitlen addition implemented yet.");
+      s_out = BuildIntersectionSum(s_in_payload_a, s_eq, (BooleanCircuit*) bc, (ArithmeticCircuit*)ac, context.payload_maxbitlen);
     }
  
     // output gate
@@ -198,11 +198,20 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
 
   party.ExecCircuit();
 
+  // uint64_t *output;
+  // uint32_t vbitlen,vnvals;
   uint64_t output = 0;
   if (context.analytics_type != PsiAnalyticsContext::NONE) {
     output = s_out->get_clear_value<uint64_t>();
+    // s_out->get_clear_value_vec(&output, &vbitlen, &vnvals);
   }
-
+  // if (context.role == CLIENT) {
+  //   std::cerr << "output" << std::endl;
+  //   for (auto i = 0ull; i < vnvals; i++) {
+  //     std::cerr << output[i] << " ";
+  //   }
+  // }
+  // std::cerr << std::endl;
   context.timings.aby_setup = party.GetTiming(P_SETUP);
   context.timings.aby_online = party.GetTiming(P_ONLINE);
   context.timings.aby_total = context.timings.aby_setup + context.timings.aby_online;
@@ -216,15 +225,27 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
 }
 
 share_ptr BuildIntersectionSumHamming(share_ptr s_payload, share_ptr s_eq, BooleanCircuit *bc) {
-  // input only payloads of relevant elements into the next function gate
-  // multi-muxgate with payloads, const 0 shares and s_eq_r as selector.
-  // bc->PutMultiMUXGate()
-  // first and gates for testing
+
   s_payload = share_ptr(bc->PutANDGate(s_eq.get(), s_payload.get()));
   auto s_payload_rotated = share_ptr(bc->PutSplitterGate(s_payload.get()));
   return share_ptr(bc->PutHammingWeightGate(s_payload_rotated.get()));
-  // hamming gate (later mixed circuits for arithmethic.)
   
+}
+
+share_ptr BuildIntersectionSum(share_ptr s_payload, share_ptr s_eq, BooleanCircuit *bc, ArithmeticCircuit *ac, uint32_t bitlen) {
+
+  std::uint64_t const_zero = 0;
+
+  auto s_zeros = share_ptr(bc->PutSIMDCONSGate(s_payload->get_nvals(), const_zero, 1));
+
+  auto s_payload_mux = share_ptr(bc->PutMUXGate(s_payload.get(), s_zeros.get(), s_eq.get()));
+  auto s_payload_ac = share_ptr(ac->PutB2AGate(s_payload_mux.get()));
+  s_payload_ac = share_ptr(ac->PutSplitterGate(s_payload_ac.get()));
+  for (auto i = 1; i < s_payload->get_nvals(); i++) {
+    s_payload_ac->set_wire_id(0, ac->PutADDGate(s_payload_ac->get_wire_id(0), s_payload_ac->get_wire_id(i)));
+  }
+  s_payload_ac->set_bitlength(1);
+  return s_payload_ac;
 }
 
 std::vector<std::pair<uint64_t,uint64_t>> OpprgPsiClient(const std::vector<uint64_t> &elements,
