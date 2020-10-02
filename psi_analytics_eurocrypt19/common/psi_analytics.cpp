@@ -174,24 +174,24 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
       s_in_payload_a = share_ptr(
       bc->PutSIMDINGate(payload_a.size(), payload_a.data(), context.payload_maxbitlen, CLIENT));
     }
-    // input only payloads of relevant elements into the next function gate
-    // multi-muxgate with payloads, const 0 shares and s_eq_r as selector.
-    // bc->PutMultiMUXGate()
-    // first and gates for testing
-    auto s_and_payload = share_ptr(bc->PutANDGate(s_eq.get(), s_in_payload_a.get()));
-    auto s_and_payload_rotated = share_ptr(bc->PutSplitterGate(s_and_payload.get()));
-    auto s_ham = share_ptr(bc->PutHammingWeightGate(s_and_payload_rotated.get()));
-    // hamming gate (later mixed circuits for arithmethic.)
 
-    auto s_ham_ac = share_ptr(ac->PutB2AGate(s_ham.get()));
-    s_out = share_ptr(ac->PutMULCONSTGate(s_two_ac.get(),s_ham_ac.get()));
+    if (context.payload_maxbitlen == 1) {
+      s_out = BuildIntersectionSumHamming(s_in_payload_a, s_eq, (BooleanCircuit*) bc);
+    } else {
+      throw std::runtime_error("Not implemented error! no >1 bitlen addition implemented yet.");
+    }
+ 
     // output gate
   } else {
     throw std::runtime_error("Encountered an unknown analytics type");
   }
 
   if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM) {
-    s_out = share_ptr(ac->PutOUTGate(s_out.get(), ALL));
+    if (context.payload_maxbitlen == 1) {
+      s_out = share_ptr(bc->PutOUTGate(s_out.get(), ALL));
+    } else {
+      s_out = share_ptr(ac->PutOUTGate(s_out.get(), ALL));
+    }
   } else if (context.analytics_type != PsiAnalyticsContext::NONE) {
     s_out = share_ptr(bc->PutOUTGate(s_out.get(), ALL));
   }
@@ -213,6 +213,18 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   context.timings.total = clock_time_total_duration.count();
 
   return output;
+}
+
+share_ptr BuildIntersectionSumHamming(share_ptr s_payload, share_ptr s_eq, BooleanCircuit *bc) {
+  // input only payloads of relevant elements into the next function gate
+  // multi-muxgate with payloads, const 0 shares and s_eq_r as selector.
+  // bc->PutMultiMUXGate()
+  // first and gates for testing
+  s_payload = share_ptr(bc->PutANDGate(s_eq.get(), s_payload.get()));
+  auto s_payload_rotated = share_ptr(bc->PutSplitterGate(s_payload.get()));
+  return share_ptr(bc->PutHammingWeightGate(s_payload_rotated.get()));
+  // hamming gate (later mixed circuits for arithmethic.)
+  
 }
 
 std::vector<std::pair<uint64_t,uint64_t>> OpprgPsiClient(const std::vector<uint64_t> &elements,
@@ -486,5 +498,7 @@ void PrintTimings(const PsiAnalyticsContext &context) {
                    context.timings.base_ots_libote
             << "ms\n";
 }
+
+
 
 }

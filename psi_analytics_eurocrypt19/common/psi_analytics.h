@@ -24,6 +24,7 @@
 
 #include "abycore/aby/abyparty.h"
 #include "abycore/circuit/share.h"
+#include "abycore/sharing/boolsharing.h"
 #include "helpers.h"
 #include "psi_analytics_context.h"
 
@@ -36,8 +37,11 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
 uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
                            const std::vector<std::uint64_t> &payload_input_a);
 
+std::shared_ptr<share> BuildIntersectionSumHamming(std::shared_ptr<share> s_payload,
+                                                   std::shared_ptr<share> s_eq, BooleanCircuit *bc);
+
 std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClient(const std::vector<uint64_t> &elements,
-                                                          PsiAnalyticsContext &context);
+                                                              PsiAnalyticsContext &context);
 
 std::vector<uint64_t> OpprgPsiServer(const std::vector<uint64_t> &elements,
                                          PsiAnalyticsContext &context);
