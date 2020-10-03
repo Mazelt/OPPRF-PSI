@@ -155,7 +155,7 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
     
     // get payload shares from client
     if (context.role == SERVER) {
-      s_in_payload_a = share_ptr(bc->PutDummySIMDINGate(bins.size(), context.payload_maxbitlen));
+      s_in_payload_a = share_ptr(bc->PutDummySIMDINGate(bins.size(), context.payload_a_bitlen));
     } else {
       std::vector<uint64_t> payload_a(bins.size(), 0);
       for (auto i=0ull; i < payload_a_index.size(); ++i){
@@ -172,10 +172,10 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
       //   std::cout << payload_a[i] << std::endl;
       // }
       s_in_payload_a = share_ptr(
-      bc->PutSIMDINGate(payload_a.size(), payload_a.data(), context.payload_maxbitlen, CLIENT));
+      bc->PutSIMDINGate(payload_a.size(), payload_a.data(), context.payload_a_bitlen, CLIENT));
     }
 
-    if (context.payload_maxbitlen == 1) {
+    if (context.payload_a_bitlen == 1) {
       s_out = BuildIntersectionSumHamming(s_in_payload_a, s_eq, (BooleanCircuit*) bc);
     } else {
       s_out = BuildIntersectionSum(s_in_payload_a, s_eq, (BooleanCircuit*) bc, (ArithmeticCircuit*)ac);
@@ -187,7 +187,7 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   }
 
   if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM) {
-    if (context.payload_maxbitlen == 1) {
+    if (context.payload_a_bitlen == 1) {
       s_out = share_ptr(bc->PutOUTGate(s_out.get(), ALL));
     } else {
       s_out = share_ptr(ac->PutOUTGate(s_out.get(), ALL));
@@ -206,13 +206,7 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
     output = s_out->get_clear_value<uint64_t>();
     // s_out->get_clear_value_vec(&output, &vbitlen, &vnvals);
   }
-  // if (context.role == CLIENT) {
-  //   std::cerr << "output" << std::endl;
-  //   for (auto i = 0ull; i < vnvals; i++) {
-  //     std::cerr << output[i] << " ";
-  //   }
-  // }
-  // std::cerr << std::endl;
+
   context.timings.aby_setup = party.GetTiming(P_SETUP);
   context.timings.aby_online = party.GetTiming(P_ONLINE);
   context.timings.aby_total = context.timings.aby_setup + context.timings.aby_online;

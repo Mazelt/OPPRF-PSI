@@ -85,4 +85,18 @@ std::vector<uint64_t> GenerateSequentialElements(const std::size_t n) {
   return elements;
 }
 
+std::vector<uint64_t> GenerateRandomPayload(const std::size_t n, const std::size_t bitlen,
+                                            const std::size_t seed) {
+  std::vector<uint64_t> output;
+  output.reserve(n);
+  std::mt19937 engine(seed);
+  std::uniform_int_distribution<std::uint64_t> dist(0, (1ull << bitlen) - 1);
+
+  const auto my_rand = [&engine, &dist]() { return dist(engine); };
+  for (auto i = 0; i < n; ++i) {
+    output.push_back(my_rand());
+  }
+  return output;
+}
+
 }

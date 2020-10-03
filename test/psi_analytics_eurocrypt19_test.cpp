@@ -39,6 +39,7 @@ auto CreateContext(e_role role, uint64_t neles, uint64_t polynomialsize, uint64_
                                        nmegabins,
                                        1.27f,  // epsilon
                                        "127.0.0.1",
+                                       0, // payload_a_bitlen
                                        ENCRYPTO::PsiAnalyticsContext::SUM};
 }
 
@@ -204,12 +205,8 @@ void PsiAnalyticsPayloadATest(ENCRYPTO::PsiAnalyticsContext client_context,
 
   auto plain_intersection_size = ENCRYPTO::PlainIntersectionSize(client_inputs, server_inputs);
   assert(plain_intersection_size != 0);
-  std::vector<uint64_t> payload_a = ENCRYPTO::GenerateRandomPayload(client_context.neles, client_context.payload_maxbitlen, 2);
+  std::vector<uint64_t> payload_a = ENCRYPTO::GenerateRandomPayload(client_context.neles, client_context.payload_a_bitlen, 2);
 
-  // std::cerr << "payload" << std::endl;
-  // for (auto i = 0ull; i < 8; i++) {
-  //   std::cerr << payload_a[i] << std::endl;
-  // }
   auto plain_intersection_payload_sum =
       PlaintextPayloadASum(client_inputs, server_inputs, payload_a);
 
@@ -274,6 +271,7 @@ TEST(PSI_ANALYTICS, pow_2_12_payA) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
+                                     2, // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM};
 
     // server's context
@@ -291,6 +289,7 @@ TEST(PSI_ANALYTICS, pow_2_12_payA) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
+                                     2, // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM};
     PsiAnalyticsPayloadATest(cc, sc);
   }
@@ -313,6 +312,7 @@ TEST(PSI_ANALYTICS, pow_2_12_threshold) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
+                                     0, // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::THRESHOLD};
 
     // server's context
@@ -330,6 +330,7 @@ TEST(PSI_ANALYTICS, pow_2_12_threshold) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
+                                     0, // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::THRESHOLD};
     PsiAnalyticsThresholdTest(cc, sc);
   }
@@ -352,6 +353,7 @@ TEST(PSI_ANALYTICS, pow_2_12_sum_if_gt_threshold) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
+                                     0, // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::SUM_IF_GT_THRESHOLD};
     // server's context
     ENCRYPTO::PsiAnalyticsContext sc{7777,  // port
@@ -368,6 +370,7 @@ TEST(PSI_ANALYTICS, pow_2_12_sum_if_gt_threshold) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
+                                     0, // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::SUM_IF_GT_THRESHOLD};
     PsiAnalyticsSumIfGtThresholdTest(cc, sc);
   }
@@ -390,6 +393,7 @@ TEST(PSI_ANALYTICS, pow_2_12_sum) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
+                                     0, // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::SUM};
 
     // server's context
@@ -407,6 +411,7 @@ TEST(PSI_ANALYTICS, pow_2_12_sum) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
+                                     0, // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::SUM};
     PsiAnalyticsSumTest(cc, sc);
   }
