@@ -178,7 +178,7 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
     if (context.payload_maxbitlen == 1) {
       s_out = BuildIntersectionSumHamming(s_in_payload_a, s_eq, (BooleanCircuit*) bc);
     } else {
-      s_out = BuildIntersectionSum(s_in_payload_a, s_eq, (BooleanCircuit*) bc, (ArithmeticCircuit*)ac, context.payload_maxbitlen);
+      s_out = BuildIntersectionSum(s_in_payload_a, s_eq, (BooleanCircuit*) bc, (ArithmeticCircuit*)ac);
     }
  
     // output gate
@@ -192,6 +192,7 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
     } else {
       s_out = share_ptr(ac->PutOUTGate(s_out.get(), ALL));
     }
+
   } else if (context.analytics_type != PsiAnalyticsContext::NONE) {
     s_out = share_ptr(bc->PutOUTGate(s_out.get(), ALL));
   }
@@ -232,7 +233,7 @@ share_ptr BuildIntersectionSumHamming(share_ptr s_payload, share_ptr s_eq, Boole
   
 }
 
-share_ptr BuildIntersectionSum(share_ptr s_payload, share_ptr s_eq, BooleanCircuit *bc, ArithmeticCircuit *ac, uint32_t bitlen) {
+share_ptr BuildIntersectionSum(share_ptr s_payload, share_ptr s_eq, BooleanCircuit *bc, ArithmeticCircuit *ac) {
 
   std::uint64_t const_zero = 0;
 
@@ -242,9 +243,9 @@ share_ptr BuildIntersectionSum(share_ptr s_payload, share_ptr s_eq, BooleanCircu
   auto s_payload_ac = share_ptr(ac->PutB2AGate(s_payload_mux.get()));
   s_payload_ac = share_ptr(ac->PutSplitterGate(s_payload_ac.get()));
   for (auto i = 1; i < s_payload->get_nvals(); i++) {
-    s_payload_ac->set_wire_id(0, ac->PutADDGate(s_payload_ac->get_wire_id(0), s_payload_ac->get_wire_id(i)));
+    s_payload_ac->set_wire_id(0, ac->PutADDGate(s_payload_ac->get_wire_id(0), s_payload_ac->get_wire_id(i)));  // add gates are free for arithmetic circuits
   }
-  s_payload_ac->set_bitlength(1);
+  s_payload_ac->set_bitlength(1);  // we only need the result.
   return s_payload_ac;
 }
 

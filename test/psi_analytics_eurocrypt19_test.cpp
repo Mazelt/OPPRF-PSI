@@ -42,20 +42,6 @@ auto CreateContext(e_role role, uint64_t neles, uint64_t polynomialsize, uint64_
                                        ENCRYPTO::PsiAnalyticsContext::SUM};
 }
 
-std::vector<uint64_t> GenerateRandomPayload(const std::size_t n, const std::size_t bitlen, const std::size_t seed) {
-  std::vector<uint64_t> output;
-  output.reserve(n);
-  std::mt19937 engine(seed);
-  std::uniform_int_distribution<std::uint64_t> dist(0, (1ull << bitlen) - 1);
-
-  const auto my_rand = [&engine, &dist]() { return dist(engine); };
-  for (auto i = 0;i< n; ++i){
-
-    output.push_back(my_rand());
-  }
-  return output;
-}
-
 bool comp(const std::pair<uint64_t, uint64_t> &a, const std::pair<uint64_t, uint64_t> &b) {
   return a.first < b.first;
 }
@@ -218,7 +204,7 @@ void PsiAnalyticsPayloadATest(ENCRYPTO::PsiAnalyticsContext client_context,
 
   auto plain_intersection_size = ENCRYPTO::PlainIntersectionSize(client_inputs, server_inputs);
   assert(plain_intersection_size != 0);
-  std::vector<uint64_t> payload_a = GenerateRandomPayload(client_context.neles, client_context.payload_maxbitlen, 2);
+  std::vector<uint64_t> payload_a = ENCRYPTO::GenerateRandomPayload(client_context.neles, client_context.payload_maxbitlen, 2);
 
   // std::cerr << "payload" << std::endl;
   // for (auto i = 0ull; i < 8; i++) {

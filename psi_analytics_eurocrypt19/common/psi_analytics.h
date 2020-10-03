@@ -41,7 +41,7 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
 std::shared_ptr<share> BuildIntersectionSumHamming(std::shared_ptr<share> s_payload,
                                                    std::shared_ptr<share> s_eq, BooleanCircuit *bc);
 std::shared_ptr<share> BuildIntersectionSum(std::shared_ptr<share> s_payload,
-                                                   std::shared_ptr<share> s_eq, BooleanCircuit *bc, ArithmeticCircuit *ac, uint32_t bitlen);
+                                                   std::shared_ptr<share> s_eq, BooleanCircuit *bc, ArithmeticCircuit *ac);
 
 std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClient(const std::vector<uint64_t> &elements,
                                                               PsiAnalyticsContext &context);
