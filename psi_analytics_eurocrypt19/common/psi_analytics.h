@@ -42,9 +42,12 @@ std::shared_ptr<share> BuildIntersectionSumHamming(std::shared_ptr<share> s_payl
                                                    std::shared_ptr<share> s_eq, BooleanCircuit *bc);
 std::shared_ptr<share> BuildIntersectionSum(std::shared_ptr<share> s_payload,
                                                    std::shared_ptr<share> s_eq, BooleanCircuit *bc, ArithmeticCircuit *ac);
+std::shared_ptr<share> BuildGreaterThan(std::shared_ptr<share> s_in,
+                                        std::shared_ptr<share> s_threshold,
+                                        std::shared_ptr<share> s_zero, BooleanCircuit *circ);
 
 std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClient(const std::vector<uint64_t> &elements,
-                                                              PsiAnalyticsContext &context);
+                                                          PsiAnalyticsContext &context);
 
 std::vector<uint64_t> OpprgPsiServer(const std::vector<uint64_t> &elements,
                                          PsiAnalyticsContext &context);

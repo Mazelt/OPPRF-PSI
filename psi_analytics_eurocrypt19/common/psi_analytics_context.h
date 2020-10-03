@@ -46,7 +46,8 @@ struct PsiAnalyticsContext {
         THRESHOLD,  // 1 if T > PSI, 0 otherwise
         SUM,        // number of matched elements
         SUM_IF_GT_THRESHOLD,  // number of matched elements if T > PSI, 0 otherwise
-        PAYLOAD_A_SUM         // sum of payload values (sender parties) of matched elements
+        PAYLOAD_A_SUM,         // sum of payload values (sender parties) of matched elements
+        PAYLOAD_A_SUM_GT      // same as PAYLOAD_A_SUM but only if threshold is reached.
       } analytics_type;
 
   const uint64_t maxbitlen = 61;
