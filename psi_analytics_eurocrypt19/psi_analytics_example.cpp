@@ -39,7 +39,7 @@ auto read_test_options(int32_t argcp, char **argvp) {
   ("nmegabins,m",    po::value<decltype(context.nmegabins)>(&context.nmegabins)->default_value(1u),                 "Number of mega bins")
   ("polysize,s",     po::value<decltype(context.polynomialsize)>(&context.polynomialsize)->default_value(0u),       "Size of the polynomial(s), default: neles")
   ("functions,f",    po::value<decltype(context.nfuns)>(&context.nfuns)->default_value(2u),                         "Number of hash functions in hash tables")
-  ("payload_a_bitlen", po::value<decltype(context.payload_a_bitlen)>(&context.payload_a_bitlen)->default_value(2u),  "Bit-length of payload A input")
+  ("payload_a_bitlen", po::value<decltype(context.payload_bitlen)>(&context.payload_bitlen)->default_value(2u),  "Bit-length of payload A input")
   ("type,y",         po::value<std::string>(&type)->default_value("None"),                                          "Function type {None, Threshold, Sum, SumIfGtThreshold, PayloadASum, PayloadASumGT}");  // clang-format on
 
   po::variables_map vm;
@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
   if (context.role == CLIENT && (
       context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM || 
       context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM_GT )) {
-    auto payloadA = ENCRYPTO::GenerateRandomPayload(context.neles, context.payload_a_bitlen, 1);
+    auto payloadA = ENCRYPTO::GenerateRandomPayload(context.neles, context.payload_bitlen, 1);
     ENCRYPTO::run_psi_analytics(inputs, context, payloadA);
   } else {
     ENCRYPTO::run_psi_analytics(inputs, context);

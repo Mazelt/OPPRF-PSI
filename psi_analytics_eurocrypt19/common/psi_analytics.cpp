@@ -25,8 +25,8 @@
 
 #include "ENCRYPTO_utils/connection.h"
 #include "ENCRYPTO_utils/socket.h"
-#include "abycore/sharing/boolsharing.h"
 #include "abycore/sharing/arithsharing.h"
+#include "abycore/sharing/boolsharing.h"
 #include "abycore/sharing/sharing.h"
 
 #include "ots/ots.h"
@@ -70,18 +70,24 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   // create hash tables from the elements
   // and create and send hints.
   std::vector<uint64_t> bins;
+
   std::vector<uint64_t> payload_a_index;
   if (context.role == CLIENT) {
     std::vector<std::pair<uint64_t, uint64_t>> bins_index;
     bins_index = OpprgPsiClient(inputs, context);
-    for (auto i = 0ull; i < bins_index.size(); ++i) {
-       bins.push_back(bins_index[i].first);
-       if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM || 
-           context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM_GT) {
-         payload_a_index.reserve(bins_index.size());
-         payload_a_index.push_back(bins_index[i].second);
-       }
+    if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM ||
+        context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM_GT) {
+      payload_a_index.reserve(bins_index.size());
+      for (auto i = 0ull; i < bins_index.size(); ++i) {
+        bins.push_back(bins_index[i].first);
+        payload_a_index.push_back(bins_index[i].second);
+      }
+    } else {
+      for (auto i = 0ull; i < bins_index.size(); ++i) {
+        bins.push_back(bins_index[i].first);
+      }
     }
+
   } else {
     bins = OpprgPsiServer(inputs, context);
   }
@@ -94,8 +100,10 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
       party.GetSharings().at(S_BOOL)->GetCircuitBuildRoutine());  // GMW circuit
   // does moving these initiations to the if branches where they are needed make
   // any difference?
-  auto ac = dynamic_cast<ArithmeticCircuit *>(party.GetSharings().at(S_ARITH)->GetCircuitBuildRoutine()); // ARITH circuit
-  auto yc = dynamic_cast<BooleanCircuit *>(party.GetSharings().at(S_YAO)->GetCircuitBuildRoutine()); // YAO circuit.
+  auto ac = dynamic_cast<ArithmeticCircuit *>(
+      party.GetSharings().at(S_ARITH)->GetCircuitBuildRoutine());  // ARITH circuit
+  auto yc = dynamic_cast<BooleanCircuit *>(
+      party.GetSharings().at(S_YAO)->GetCircuitBuildRoutine());  // YAO circuit.
   assert(bc);
   assert(ac);
 
@@ -159,41 +167,43 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   } else if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM ||
              context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM_GT) {
     share_ptr s_in_payload_a;
-    
+
     // get payload shares from client
     if (context.role == SERVER) {
-      s_in_payload_a = share_ptr(bc->PutDummySIMDINGate(bins.size(), context.payload_a_bitlen));
+      s_in_payload_a = share_ptr(bc->PutDummySIMDINGate(bins.size(), context.payload_bitlen));
     } else {
       std::vector<uint64_t> payload_a(bins.size(), 0);
-      for (auto i=0ull; i < payload_a_index.size(); ++i){
+      for (auto i = 0ull; i < payload_a_index.size(); ++i) {
         if (payload_a_index[i] > bins.size()) {
           continue;
         }
         payload_a[i] = payload_input_a[payload_a_index[i]];
       }
       if (payload_a.size() != bins.size()) {
-        std::cerr << "[Error] payload of size " << payload_a.size() << "  " << bins.size() <<  " problem\n";
+        std::cerr << "[Error] payload of size " << payload_a.size() << "  " << bins.size()
+                  << " problem\n";
       }
       // std::cout << "payload bucket matchings" << std::endl;
       // for (auto i = 0ull; i < 100; i++) {
       //   std::cout << payload_a[i] << std::endl;
       // }
       s_in_payload_a = share_ptr(
-      bc->PutSIMDINGate(payload_a.size(), payload_a.data(), context.payload_a_bitlen, CLIENT));
+          bc->PutSIMDINGate(payload_a.size(), payload_a.data(), context.payload_bitlen, CLIENT));
     }
 
-    if (context.payload_a_bitlen == 1) {
-      s_out = BuildIntersectionSumHamming(s_in_payload_a, s_eq, (BooleanCircuit*) bc);
+    if (context.payload_bitlen == 1) {
+      s_out = BuildIntersectionSumHamming(s_in_payload_a, s_eq, (BooleanCircuit *)bc);
       if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM_GT) {
-        s_out = BuildGreaterThan(s_out, s_threshold, s_zero, (BooleanCircuit*) bc);
+        s_out = BuildGreaterThan(s_out, s_threshold, s_zero, (BooleanCircuit *)bc);
       }
     } else {
-      s_out = BuildIntersectionSum(s_in_payload_a, s_eq, (BooleanCircuit*) bc, (ArithmeticCircuit*)ac);
+      s_out =
+          BuildIntersectionSum(s_in_payload_a, s_eq, (BooleanCircuit *)bc, (ArithmeticCircuit *)ac);
       if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM_GT) {
         s_out = BuildGreaterThan(s_out, s_threshold_yao, s_zero_yao, (BooleanCircuit *)yc);
       }
     }
- 
+
     // output gate
   } else {
     throw std::runtime_error("Encountered an unknown analytics type");
@@ -201,7 +211,7 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
 
   if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM ||
       context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM_GT) {
-    if (context.payload_a_bitlen == 1) {
+    if (context.payload_bitlen == 1) {
       s_out = share_ptr(bc->PutOUTGate(s_out.get(), ALL));
     } else {
       if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM) {
@@ -238,15 +248,13 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
 }
 
 share_ptr BuildIntersectionSumHamming(share_ptr s_payload, share_ptr s_eq, BooleanCircuit *bc) {
-
   s_payload = share_ptr(bc->PutANDGate(s_eq.get(), s_payload.get()));
   auto s_payload_rotated = share_ptr(bc->PutSplitterGate(s_payload.get()));
   return share_ptr(bc->PutHammingWeightGate(s_payload_rotated.get()));
-  
 }
 
-share_ptr BuildIntersectionSum(share_ptr s_payload, share_ptr s_eq, BooleanCircuit *bc, ArithmeticCircuit *ac) {
-
+share_ptr BuildIntersectionSum(share_ptr s_payload, share_ptr s_eq, BooleanCircuit *bc,
+                               ArithmeticCircuit *ac) {
   std::uint64_t const_zero = 0;
 
   auto s_zeros = share_ptr(bc->PutSIMDCONSGate(s_payload->get_nvals(), const_zero, 1));
@@ -255,13 +263,17 @@ share_ptr BuildIntersectionSum(share_ptr s_payload, share_ptr s_eq, BooleanCircu
   auto s_payload_ac = share_ptr(ac->PutB2AGate(s_payload_mux.get()));
   s_payload_ac = share_ptr(ac->PutSplitterGate(s_payload_ac.get()));
   for (auto i = 1; i < s_payload->get_nvals(); i++) {
-    s_payload_ac->set_wire_id(0, ac->PutADDGate(s_payload_ac->get_wire_id(0), s_payload_ac->get_wire_id(i)));  // add gates are free for arithmetic circuits
+    s_payload_ac->set_wire_id(
+        0, ac->PutADDGate(
+               s_payload_ac->get_wire_id(0),
+               s_payload_ac->get_wire_id(i)));  // add gates are free for arithmetic circuits
   }
   s_payload_ac->set_bitlength(1);  // we only need the result.
   return s_payload_ac;
 }
 
-share_ptr BuildGreaterThan(share_ptr s_in, share_ptr s_threshold, share_ptr s_zero, BooleanCircuit *circ) {
+share_ptr BuildGreaterThan(share_ptr s_in, share_ptr s_threshold, share_ptr s_zero,
+                           BooleanCircuit *circ) {
   // GT Gate not available for Arithmetic circuit. Conversion A2B needs Yao as a
   // intermediate step. Since Yao also has GT Gate, we can do it in Yao.
 
@@ -282,8 +294,37 @@ share_ptr BuildGreaterThan(share_ptr s_in, share_ptr s_threshold, share_ptr s_ze
   }
 }
 
-std::vector<std::pair<uint64_t,uint64_t>> OpprgPsiClient(const std::vector<uint64_t> &elements,
-                                         PsiAnalyticsContext &context) {
+// PAYLOAD_AB
+uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
+                             const std::vector<std::uint64_t> &payload_input_a,
+                             const std::vector<std::uint64_t> &payload_input_b) {
+  // establish network connection
+  std::unique_ptr<CSocket> sock =
+      EstablishConnection(context.address, context.port, static_cast<e_role>(context.role));
+  sock->Close();
+  const auto clock_time_total_start = std::chrono::system_clock::now();
+
+  // create hash tables from the elements
+  // and create and send hints.
+  std::vector<std::pair<uint64_t, uint64_t>> bins;
+  std::vector<uint64_t> payload_a_index;
+  std::vector<std::pair<uint64_t, uint64_t>> bins_2d;
+
+  if (context.role == CLIENT) {
+    bins_2d = OpprgPsiClientAB(inputs, context, payload_a_index);
+  } else {
+    bins_2d = OpprgPsiServerAB(inputs, context, payload_input_b);
+  }
+
+  const auto clock_time_total_end = std::chrono::system_clock::now();
+  const duration_millis clock_time_total_duration = clock_time_total_end - clock_time_total_start;
+  context.timings.total = clock_time_total_duration.count();
+
+  return bins_2d[1].second;
+}
+
+std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClient(const std::vector<uint64_t> &elements,
+                                                          PsiAnalyticsContext &context) {
   const auto start_time = std::chrono::system_clock::now();
   const auto hashing_start_time = std::chrono::system_clock::now();
 
@@ -306,7 +347,7 @@ std::vector<std::pair<uint64_t,uint64_t>> OpprgPsiClient(const std::vector<uint6
 
   // mask is the prf result for a bin
   std::vector<uint64_t> masks_with_dummies = ot_receiver(cuckoo_table_v, context);
-  
+
   const auto oprf_end_time = std::chrono::system_clock::now();
   const duration_millis oprf_duration = oprf_end_time - oprf_start_time;
   context.timings.oprf = oprf_duration.count();
@@ -326,12 +367,12 @@ std::vector<std::pair<uint64_t,uint64_t>> OpprgPsiClient(const std::vector<uint6
   }
 
   std::vector<uint8_t> poly_rcv_buffer(context.nmegabins * context.polynomialbytelength, 0);
-  
+
   const auto receiving_start_time = std::chrono::system_clock::now();
-  
+
   sock->Receive(poly_rcv_buffer.data(), context.nmegabins * context.polynomialbytelength);
   sock->Close();
-  
+
   const auto receiving_end_time = std::chrono::system_clock::now();
   const duration_millis sending_duration = receiving_end_time - receiving_start_time;
   context.timings.polynomials_transmission = sending_duration.count();
@@ -446,8 +487,312 @@ std::vector<uint64_t> OpprgPsiServer(const std::vector<uint64_t> &elements,
   return content_of_bins;
 }
 
+std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClientAB(const std::vector<uint64_t> &elements,
+                                                            PsiAnalyticsContext &context,
+                                                            std::vector<uint64_t> &index) {
+  const auto start_time = std::chrono::system_clock::now();
+  const auto hashing_start_time_1 = std::chrono::system_clock::now();
+
+  ENCRYPTO::CuckooTable cuckoo_table(static_cast<std::size_t>(context.nbins));
+  cuckoo_table.SetNumOfHashFunctions(context.nfuns);
+  cuckoo_table.Insert(elements);
+  cuckoo_table.MapElements();
+  // cuckoo_table.Print();
+
+  if (cuckoo_table.GetStashSize() > 0u) {
+    std::cerr << "[Error] Stash of size " << cuckoo_table.GetStashSize() << " occured\n";
+  }
+
+  auto cuckoo_table_v = cuckoo_table.AsRawVector();
+
+  const auto hashing_end_time_1 = std::chrono::system_clock::now();
+  const duration_millis hashing_duration_1 = hashing_end_time_1 - hashing_start_time_1;
+  context.timings.hashing = hashing_duration_1.count();
+  const auto oprf_start_time_1 = std::chrono::system_clock::now();
+
+  // mask is the prf result for a bin
+  std::vector<uint64_t> masks_with_dummies = ot_receiver(cuckoo_table_v, context);
+
+  const auto oprf_end_time_1 = std::chrono::system_clock::now();
+  const duration_millis oprf_duration_1 = oprf_end_time_1 - oprf_start_time_1;
+  context.timings.oprf = oprf_duration_1.count();
+
+  std::unique_ptr<CSocket> sock =
+      EstablishConnection(context.address, context.port, static_cast<e_role>(context.role));
+
+  const auto nbinsinmegabin = ceil_divide(context.nbins, context.nmegabins);
+  std::vector<std::vector<ZpMersenneLongElement>> polynomials(context.nmegabins);
+  std::vector<ZpMersenneLongElement> X(context.nbins), Y(context.nbins);
+  for (auto &polynomial : polynomials) {
+    polynomial.resize(context.polynomialsize);
+  }
+
+  for (auto i = 0ull; i < X.size(); ++i) {
+    X.at(i).elem = masks_with_dummies.at(i);
+  }
+
+  std::vector<uint8_t> poly_rcv_buffer(context.nmegabins * context.polynomialbytelength, 0);
+
+  const auto receiving_start_time_1 = std::chrono::system_clock::now();
+
+  sock->Receive(poly_rcv_buffer.data(), context.nmegabins * context.polynomialbytelength);
+  // sock->Close();
+
+  const auto receiving_end_time_1 = std::chrono::system_clock::now();
+  const duration_millis sending_duration_1 = receiving_end_time_1 - receiving_start_time_1;
+  context.timings.polynomials_transmission = sending_duration_1.count();
+
+  const auto eval_poly_start_time_1 = std::chrono::system_clock::now();
+  for (auto poly_i = 0ull; poly_i < polynomials.size(); ++poly_i) {
+    for (auto coeff_i = 0ull; coeff_i < context.polynomialsize; ++coeff_i) {
+      polynomials.at(poly_i).at(coeff_i).elem = (reinterpret_cast<uint64_t *>(
+          poly_rcv_buffer.data()))[poly_i * context.polynomialsize + coeff_i];
+    }
+  }
+
+  for (auto i = 0ull; i < X.size(); ++i) {
+    std::size_t p = i / nbinsinmegabin;
+    Poly::evalMersenne(Y.at(i), polynomials.at(p), X.at(i));
+  }
+
+  const auto eval_poly_end_time_1 = std::chrono::system_clock::now();
+  const duration_millis eval_poly_duration_1 = eval_poly_end_time_1 - eval_poly_start_time_1;
+  context.timings.polynomials = eval_poly_duration_1.count();
+
+  std::vector<uint64_t> index_table = cuckoo_table.GetIndex();
+  index.reserve(index_table.size());
+  index = index_table;
+
+  // std::cerr << "bin_index_result right after pushback" << std::endl;
+  // for (auto i = 0ull; i < 10; i++) {
+  //   std::cerr << bins_index_result[i].first << " " << bins_index_result[i].second << std::endl;
+  // }
+
+  //////////////////////
+  // OPPRF 2 for payload encryption
+  // can we reuse the masks from phase 1?????/
+  //////////////////////
+
+  const auto oprf_start_time_2 = std::chrono::system_clock::now();
+
+  // mask is the prf result for a bin
+  std::vector<uint64_t> masks_with_dummies_2 = ot_receiver(cuckoo_table_v, context);
+
+  const auto oprf_end_time_2 = std::chrono::system_clock::now();
+  const duration_millis oprf_duration_2 = oprf_end_time_2 - oprf_start_time_2;
+  context.timings.oprf += oprf_duration_2.count();
+  // hint (polynomials) calculation
+  std::vector<std::vector<ZpMersenneLongElement>> polynomials2(context.nmegabins);
+  std::vector<ZpMersenneLongElement> X2(context.nbins), Y2(context.nbins);
+  for (auto &polynomial : polynomials2) {
+    polynomial.resize(context.polynomialsize);
+  }
+
+  for (auto i = 0ull; i < X2.size(); ++i) {
+    X2.at(i).elem = masks_with_dummies_2.at(i);
+  }
+
+  std::vector<uint8_t> poly_rcv_buffer_2(context.nmegabins * context.polynomialbytelength, 0);
+
+  const auto receiving_start_time_2 = std::chrono::system_clock::now();
+
+  sock->Receive(poly_rcv_buffer_2.data(), context.nmegabins * context.polynomialbytelength);
+  sock->Close();
+
+  const auto receiving_end_time_2 = std::chrono::system_clock::now();
+  const duration_millis sending_duration_2 = receiving_end_time_2 - receiving_start_time_2;
+  context.timings.polynomials_transmission += sending_duration_2.count();
+
+  const auto eval_poly_start_time_2 = std::chrono::system_clock::now();
+  for (auto poly_i = 0ull; poly_i < polynomials2.size(); ++poly_i) {
+    for (auto coeff_i = 0ull; coeff_i < context.polynomialsize; ++coeff_i) {
+      polynomials2.at(poly_i).at(coeff_i).elem = (reinterpret_cast<uint64_t *>(
+          poly_rcv_buffer_2.data()))[poly_i * context.polynomialsize + coeff_i];
+    }
+  }
+
+  for (auto i = 0ull; i < X2.size(); ++i) {
+    std::size_t p = i / nbinsinmegabin;
+    Poly::evalMersenne(Y2.at(i), polynomials2.at(p), X2.at(i));
+  }
+
+  const auto eval_poly_end_time_2 = std::chrono::system_clock::now();
+  const duration_millis eval_poly_duration_2 = eval_poly_end_time_2 - eval_poly_start_time_2;
+  context.timings.polynomials += eval_poly_duration_2.count();
+
+  std::vector<std::pair<uint64_t, uint64_t>> raw_bin_result;
+  raw_bin_result.reserve(X.size());
+  for (auto i = 0ull; i < X.size(); ++i) {
+    raw_bin_result.push_back(std::make_pair(X[i].elem ^ Y[i].elem, X2[i].elem ^ Y2[i].elem));
+  }
+
+  const auto end_time = std::chrono::system_clock::now();
+  const duration_millis total_duration = end_time - start_time;
+  context.timings.total = total_duration.count();
+
+  return raw_bin_result;
+}
+
+std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiServerAB(
+    const std::vector<uint64_t> &elements, PsiAnalyticsContext &context,
+    const std::vector<std::uint64_t> &payload_input_b) {
+  const auto start_time = std::chrono::system_clock::now();
+
+  const auto hashing_start_time = std::chrono::system_clock::now();
+
+  // hashing server elements using simple hashing into bins.
+  ENCRYPTO::SimpleTable simple_table(static_cast<std::size_t>(context.nbins));
+  simple_table.SetNumOfHashFunctions(context.nfuns);
+  simple_table.Insert(elements);
+  simple_table.MapElements();
+  // simple_table.Print();
+
+  auto simple_table_v = simple_table.AsRaw2DVector();
+  std::vector<std::vector<uint64_t>> index_table = simple_table.GetIndex2D();
+
+  // context.simple_table = simple_table_v;
+
+  const auto hashing_end_time = std::chrono::system_clock::now();
+  const duration_millis hashing_duration = hashing_end_time - hashing_start_time;
+  context.timings.hashing = hashing_duration.count();
+
+  const auto oprf_start_time_1 = std::chrono::system_clock::now();
+
+  // oprf with receiver to evaluate (per bin) eachothers items. (same bin, same key)
+  // masks are the oprf results of simple table elements.
+  auto masks = ot_sender(simple_table_v, context);
+
+  const auto oprf_end_time_1 = std::chrono::system_clock::now();
+  const duration_millis oprf_duration_1 = oprf_end_time_1 - oprf_start_time_1;
+  context.timings.oprf = oprf_duration_1.count();
+
+  const auto polynomials_start_time_1 = std::chrono::system_clock::now();
+
+  // creating hints of size context.polynomialsize for each megabin.
+  // Hints are a polynomial interpolated on the (element, oprf-result XOR tj) pairs.
+  std::vector<uint64_t> polynomials(context.nmegabins * context.polynomialsize, 0);
+  std::vector<uint64_t> content_of_bins(context.nbins);
+
+  std::random_device urandom("/dev/urandom");
+  std::uniform_int_distribution<uint64_t> dist(0,
+                                               (1ull << context.maxbitlen) - 1);  // [0,2^elebitlen)
+
+  // T set.
+  // generate random numbers to use for mapping the polynomial to
+  std::generate(content_of_bins.begin(), content_of_bins.end(), [&]() { return dist(urandom); });
+  {
+    auto tmp = content_of_bins;
+    std::sort(tmp.begin(), tmp.end());
+    auto last = std::unique(tmp.begin(), tmp.end());
+    tmp.erase(last, tmp.end());
+    assert(tmp.size() == content_of_bins.size());
+  }
+
+  std::unique_ptr<CSocket> sock =
+      EstablishConnection(context.address, context.port, static_cast<e_role>(context.role));
+
+  InterpolatePolynomials(polynomials, content_of_bins, masks, context);
+
+  const auto polynomials_end_time_1 = std::chrono::system_clock::now();
+  const duration_millis polynomials_duration_1 = polynomials_end_time_1 - polynomials_start_time_1;
+  context.timings.polynomials = polynomials_duration_1.count();
+  const auto sending_start_time_1 = std::chrono::system_clock::now();
+
+  // send polynomials to the receiver
+  sock->Send((uint8_t *)polynomials.data(), context.nmegabins * context.polynomialbytelength);
+  // sock->Close();
+
+  const auto sending_end_time_1 = std::chrono::system_clock::now();
+  const duration_millis sending_duration_1 = sending_end_time_1 - sending_start_time_1;
+  context.timings.polynomials_transmission = sending_duration_1.count();
+
+  //////////////////////
+  // OPPRF 2 for payload encryption
+  // can we reuse the masks from phase 1?????/
+  //////////////////////
+
+  const auto oprf_start_time_2 = std::chrono::system_clock::now();
+
+  // oprf with receiver to evaluate (per bin) eachothers items. (same bin, same key)
+  // masks are the oprf results of simple table elements.
+  auto masks2 = ot_sender(simple_table_v, context);
+
+  const auto oprf_end_time_2 = std::chrono::system_clock::now();
+  const duration_millis oprf_duration_2 = oprf_end_time_2 - oprf_start_time_2;
+  context.timings.oprf = oprf_duration_2.count();
+
+  const auto polynomials_start_time_2 = std::chrono::system_clock::now();
+
+  // creating hints of size context.polynomialsize for each megabin.
+  // Hints are a polynomial interpolated on the (element, oprf-result XOR tj) pairs.
+  std::vector<uint64_t> polynomials2(context.nmegabins * context.polynomialsize, 0);
+  std::vector<uint64_t> t_values(context.nbins);
+
+  // std::random_device urandom("/dev/urandom");
+  // std::uniform_int_distribution<uint64_t> dist(0,
+  //                                              (1ull << context.maxbitlen) - 1);  //
+  //                                              [0,2^elebitlen)
+
+  // T set.
+  // generate random numbers to use for mapping the polynomial to
+  std::generate(t_values.begin(), t_values.end(), [&]() { return dist(urandom); });
+  {
+    auto tmp = t_values;
+    std::sort(tmp.begin(), tmp.end());
+    auto last = std::unique(tmp.begin(), tmp.end());
+    tmp.erase(last, tmp.end());
+    assert(tmp.size() == t_values.size());
+  }
+
+  std::vector<std::vector<uint64_t>> content_of_bins2(context.nbins);
+
+  for (auto i = 0ull; i < context.nbins; ++i) 
+  {
+    for (auto &ind : index_table[i]){
+        content_of_bins2.at(i).push_back(t_values[i] ^ payload_input_b[ind]); 
+    }  
+  }
+
+  InterpolatePolynomials(polynomials2, content_of_bins2, masks2, context);
+
+  const auto polynomials_end_time_2 = std::chrono::system_clock::now();
+  const duration_millis polynomials_duration_2 = polynomials_end_time_2 - polynomials_start_time_2;
+  context.timings.polynomials += polynomials_duration_2.count();
+  const auto sending_start_time_2 = std::chrono::system_clock::now();
+
+  // send polynomials to the receiver
+  sock->Send((uint8_t *)polynomials2.data(), context.nmegabins * context.polynomialbytelength);
+  sock->Close();
+
+  const auto sending_end_time_2 = std::chrono::system_clock::now();
+  const duration_millis sending_duration_2 = sending_end_time_2 - sending_start_time_2;
+  context.timings.polynomials_transmission += sending_duration_2.count();
+
+  std::vector<std::pair<uint64_t, uint64_t>> raw_bin_results;
+  raw_bin_results.reserve(content_of_bins.size());
+  for (auto i = 0ull; i < content_of_bins.size(); ++i) {
+    raw_bin_results.push_back(std::make_pair(content_of_bins[i], t_values[i]));
+  }
+  const auto end_time = std::chrono::system_clock::now();
+  const duration_millis total_duration = end_time - start_time;
+  context.timings.total = total_duration.count();
+
+  return raw_bin_results;
+}
+
 void InterpolatePolynomials(std::vector<uint64_t> &polynomials,
                             std::vector<uint64_t> &content_of_bins,
+                            const std::vector<std::vector<uint64_t>> &masks,
+                            PsiAnalyticsContext &context){
+  std::vector<std::vector<uint64_t>> contents_of_bins(content_of_bins.size());                            
+  for (auto i=0ull; i < contents_of_bins.size(); ++i) {
+    contents_of_bins.at(i).push_back(content_of_bins[i]);
+  }
+  InterpolatePolynomials(polynomials, contents_of_bins, masks, context);
+};
+
+void InterpolatePolynomials(std::vector<uint64_t> &polynomials,
+                            std::vector<std::vector<uint64_t>> &contents_of_bins,
                             const std::vector<std::vector<uint64_t>> &masks,
                             PsiAnalyticsContext &context) {
   std::size_t nbins = masks.size();
@@ -456,7 +801,7 @@ void InterpolatePolynomials(std::vector<uint64_t> &polynomials,
 
   for (auto mega_bin_i = 0ull; mega_bin_i < context.nmegabins; ++mega_bin_i) {
     auto polynomial = polynomials.begin() + context.polynomialsize * mega_bin_i;
-    auto bin = content_of_bins.begin() + nbinsinmegabin * mega_bin_i;
+    auto bin = contents_of_bins.begin() + nbinsinmegabin * mega_bin_i;
     auto masks_in_bin = masks.begin() + nbinsinmegabin * mega_bin_i;
 
     if ((masks_offset + nbinsinmegabin) > masks.size()) {
@@ -473,7 +818,7 @@ void InterpolatePolynomials(std::vector<uint64_t> &polynomials,
 
 void InterpolatePolynomialsPaddedWithDummies(
     std::vector<uint64_t>::iterator polynomial_offset,
-    std::vector<uint64_t>::const_iterator random_value_in_bin,
+    std::vector<std::vector<uint64_t>>::const_iterator random_values_in_bin,
     std::vector<std::vector<uint64_t>>::const_iterator masks_for_elems_in_bin,
     std::size_t nbins_in_megabin, PsiAnalyticsContext &context) {
   std::uniform_int_distribution<std::uint64_t> dist(0,
@@ -487,14 +832,26 @@ void InterpolatePolynomialsPaddedWithDummies(
   for (auto i = 0ull, bin_counter = 0ull; i < context.polynomialsize;) {
     if (bin_counter < nbins_in_megabin) {
       if ((*masks_for_elems_in_bin).size() > 0) {
-        for (auto &mask : *masks_for_elems_in_bin) {
-          X.at(i).elem = mask & __61_bit_mask;
-          Y.at(i).elem = X.at(i).elem ^ *random_value_in_bin;  // random_value_in_bin is t_j
-          ++i;
+        if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_SUM){
+          auto &random_value = *random_values_in_bin;
+          auto c = 0ull;
+          for (auto &mask : *masks_for_elems_in_bin) {
+            X.at(i).elem = mask & __61_bit_mask;
+            Y.at(i).elem = X.at(i).elem ^ random_value[c];  // random_value_in_bin is t_j XOR Payload
+            ++i;
+            ++c;
+          }
+        } else {
+          auto &random_value = *random_values_in_bin;
+          for (auto &mask : *masks_for_elems_in_bin) {
+            X.at(i).elem = mask & __61_bit_mask;
+            Y.at(i).elem = X.at(i).elem ^ random_value[0];  // random_value_in_bin is t_j
+            ++i;
+          }
         }
       }
       ++masks_for_elems_in_bin;
-      ++random_value_in_bin;  // proceed to the next bin (iterator)
+      ++random_values_in_bin;  // proceed to the next bin (iterator)
       ++bin_counter;
     } else {  // generate dummy elements for polynomial interpolation
       X.at(i).elem = my_rand();
@@ -541,7 +898,7 @@ void PrintTimings(const PsiAnalyticsContext &context) {
   std::cout << "Time for polynomials " << context.timings.polynomials << " ms\n";
   std::cout << "Time for transmission of the polynomials "
             << context.timings.polynomials_transmission << " ms\n";
-//  std::cout << "Time for OPPRF " << context.timings.opprf << " ms\n";
+  //  std::cout << "Time for OPPRF " << context.timings.opprf << " ms\n";
 
   std::cout << "ABY timings: online time " << context.timings.aby_online << " ms, setup time "
             << context.timings.aby_setup << " ms, total time " << context.timings.aby_total
@@ -554,6 +911,4 @@ void PrintTimings(const PsiAnalyticsContext &context) {
             << "ms\n";
 }
 
-
-
-}
+}  // namespace ENCRYPTO
