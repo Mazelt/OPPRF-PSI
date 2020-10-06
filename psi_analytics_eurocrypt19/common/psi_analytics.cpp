@@ -49,7 +49,6 @@
 namespace ENCRYPTO {
 
 using share_ptr = std::shared_ptr<share>;
-using share_ptr_ptr = std::shared_ptr<std::shared_ptr<share>>;
 
 using milliseconds_ratio = std::ratio<1, 1000>;
 using duration_millis = std::chrono::duration<double, milliseconds_ratio>;
@@ -120,7 +119,6 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
 
   // compare outputs of OPPRFs for each bin in ABY (using SIMD)
   auto s_eq = share_ptr(bc->PutEQGate(s_in_server.get(), s_in_client.get()));
-
   // bin_result might just be for debugging. not used anywhere else right now.
   // std::vector<share_ptr> bin_results;
   // for (uint32_t i = 0; i < bins.size(); ++i) {
@@ -306,21 +304,130 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
 
   // create hash tables from the elements
   // and create and send hints.
-  std::vector<std::pair<uint64_t, uint64_t>> bins;
-  std::vector<uint64_t> payload_a_index;
+  std::vector<uint64_t> payload_a;
   std::vector<std::pair<uint64_t, uint64_t>> bins_2d;
 
   if (context.role == CLIENT) {
+    std::vector<uint64_t> payload_a_index;
     bins_2d = OpprgPsiClientAB(inputs, context, payload_a_index);
+
+    payload_a.reserve(bins_2d.size()); 
+    for (auto &ind : payload_a_index) {
+      if (ind > bins_2d.size()){
+        payload_a.push_back(0);
+      } else {
+        payload_a.push_back(payload_input_a[ind]);
+      }
+    }
   } else {
     bins_2d = OpprgPsiServerAB(inputs, context, payload_input_b);
   }
+
+  std::vector<uint64_t> bins1;
+  std::vector<uint64_t> bins2;
+  bins1.reserve(bins_2d.size());
+  bins2.reserve(bins_2d.size());
+  for (auto i = 0ull; i < bins_2d.size(); ++i) {
+    bins1.push_back(bins_2d[i].first);
+    bins2.push_back(bins_2d[i].second);
+  }
+
+
+  // instantiate ABY
+  ABYParty party(static_cast<e_role>(context.role), context.address, context.port, LT, 64,
+                     context.nthreads);
+  party.ConnectAndBaseOTs();
+  auto bc = dynamic_cast<BooleanCircuit *>(
+      party.GetSharings().at(S_BOOL)->GetCircuitBuildRoutine());  // GMW circuit
+  // does moving these initiations to the if branches where they are needed make
+  // any difference?
+  auto ac = dynamic_cast<ArithmeticCircuit *>(
+      party.GetSharings().at(S_ARITH)->GetCircuitBuildRoutine());  // ARITH circuit
+  auto yc = dynamic_cast<BooleanCircuit *>(
+      party.GetSharings().at(S_YAO)->GetCircuitBuildRoutine());  // YAO circuit.
+  assert(bc);
+  assert(ac);
+
+  share_ptr s_in_server_1, s_in_client_1, s_in_server_2, s_in_client_2, s_in_payload_a;
+
+  // share inputs in ABY
+  if (context.role == SERVER) {
+    s_in_server_1 =
+        share_ptr(bc->PutSIMDINGate(bins1.size(), bins1.data(), context.maxbitlen, SERVER));
+    s_in_server_2 =
+        share_ptr(bc->PutSIMDINGate(bins2.size(), bins2.data(), context.maxbitlen, SERVER));
+    s_in_client_1 =
+        share_ptr(bc->PutDummySIMDINGate(bins1.size(), context.maxbitlen));
+    s_in_client_2 =
+        share_ptr(bc->PutDummySIMDINGate(bins2.size(), context.maxbitlen));
+    s_in_payload_a =
+        share_ptr(bc->PutDummySIMDINGate(bins1.size(), context.payload_bitlen));
+  } else {
+    s_in_server_1 =
+        share_ptr(bc->PutDummySIMDINGate(bins1.size(), context.maxbitlen));
+    s_in_server_2 =
+        share_ptr(bc->PutDummySIMDINGate(bins2.size(), context.maxbitlen));
+    s_in_client_1 =
+        share_ptr(bc->PutSIMDINGate(bins1.size(), bins1.data(), context.maxbitlen, CLIENT));
+    s_in_client_2 =
+        share_ptr(bc->PutSIMDINGate(bins2.size(), bins2.data(), context.maxbitlen, CLIENT));
+    s_in_payload_a =
+        share_ptr(bc->PutSIMDINGate(payload_a.size(), payload_a.data(), context.payload_bitlen, CLIENT));
+  }
+
+  // compare outputs of OPPRFs for each bin in ABY (using SIMD)
+  auto s_eq = share_ptr(bc->PutEQGate(s_in_server_1.get(), s_in_client_1.get()));
+
+  share_ptr s_out;
+  auto t_bitlen = static_cast<std::size_t>(std::ceil(std::log2(context.threshold)));
+  auto s_threshold = share_ptr(bc->PutCONSGate(context.threshold, t_bitlen));
+  std::uint64_t const_zero = 0;
+  auto s_zeros = share_ptr(bc->PutSIMDCONSGate(bins2.size(), const_zero, 1));
+
+  auto s_xor_payload_b = share_ptr(bc->PutXORGate(s_in_client_2.get(), s_in_server_2.get()));
+  auto s_mux_payload_b = share_ptr(bc->PutMUXGate(s_xor_payload_b.get(), s_zeros.get(), s_eq.get()));
+
+  share_ptr s_b_sum, s_a_sum, s_ab_sum;
+  if(context.payload_bitlen == 1) {
+    s_a_sum = BuildIntersectionSumHamming(s_in_payload_a, s_eq, (BooleanCircuit *)bc);
+    s_b_sum = BuildIntersectionSumHamming(s_mux_payload_b, s_eq, (BooleanCircuit *)bc);
+    s_ab_sum = share_ptr(bc->PutADDGate(s_a_sum.get(), s_b_sum.get()));
+  } else {
+    s_a_sum =
+        BuildIntersectionSum(s_in_payload_a, s_eq, (BooleanCircuit *)bc, (ArithmeticCircuit *)ac);
+    s_b_sum =
+        BuildIntersectionSum(s_mux_payload_b, s_eq, (BooleanCircuit *)bc, (ArithmeticCircuit *)ac);
+    s_ab_sum = share_ptr(ac->PutADDGate(s_a_sum.get(),s_b_sum.get()));
+  }
+
+  if (context.payload_bitlen == 1) {
+    s_out = share_ptr(bc->PutOUTGate(s_ab_sum.get(), ALL));
+  } else {
+    s_out = share_ptr(ac->PutOUTGate(s_ab_sum.get(), ALL));
+  }  
+  party.ExecCircuit();
+
+  // uint64_t *output;
+  // uint32_t vbitlen, vnvals;
+  // s_out->get_clear_value_vec(&output, &vbitlen, &vnvals);
+
+  uint64_t output = s_out->get_clear_value<uint64_t>();
+
+  // if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_SUM) {
+
+  // } else {
+  //   throw std::runtime_error("Encountered an unknown analytics type");
+  // }  
+  context.timings.aby_setup = party.GetTiming(P_SETUP);
+  context.timings.aby_online = party.GetTiming(P_ONLINE);
+  context.timings.aby_total = context.timings.aby_setup + context.timings.aby_online;
+  context.timings.base_ots_aby = party.GetTiming(P_BASE_OT);
 
   const auto clock_time_total_end = std::chrono::system_clock::now();
   const duration_millis clock_time_total_duration = clock_time_total_end - clock_time_total_start;
   context.timings.total = clock_time_total_duration.count();
 
-  return bins_2d[1].second;
+  return output;
 }
 
 std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClient(const std::vector<uint64_t> &elements,
@@ -559,10 +666,9 @@ std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClientAB(const std::vector<ui
   const duration_millis eval_poly_duration_1 = eval_poly_end_time_1 - eval_poly_start_time_1;
   context.timings.polynomials = eval_poly_duration_1.count();
 
-  std::vector<uint64_t> index_table = cuckoo_table.GetIndex();
-  index.reserve(index_table.size());
-  index = index_table;
-
+  index = cuckoo_table.GetIndex();
+  // std::cerr << index_table[0] << std::endl;
+  // index = index_table
   // std::cerr << "bin_index_result right after pushback" << std::endl;
   // for (auto i = 0ull; i < 10; i++) {
   //   std::cerr << bins_index_result[i].first << " " << bins_index_result[i].second << std::endl;
@@ -746,11 +852,10 @@ std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiServerAB(
 
   std::vector<std::vector<uint64_t>> content_of_bins2(context.nbins);
 
-  for (auto i = 0ull; i < context.nbins; ++i) 
-  {
-    for (auto &ind : index_table[i]){
-        content_of_bins2.at(i).push_back(t_values[i] ^ payload_input_b[ind]); 
-    }  
+  for (auto i = 0ull; i < context.nbins; ++i) {
+    for (auto &ind : index_table[i]) {
+      content_of_bins2.at(i).push_back(t_values[i] ^ payload_input_b[ind]);
+    }
   }
 
   InterpolatePolynomials(polynomials2, content_of_bins2, masks2, context);
@@ -783,9 +888,9 @@ std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiServerAB(
 void InterpolatePolynomials(std::vector<uint64_t> &polynomials,
                             std::vector<uint64_t> &content_of_bins,
                             const std::vector<std::vector<uint64_t>> &masks,
-                            PsiAnalyticsContext &context){
-  std::vector<std::vector<uint64_t>> contents_of_bins(content_of_bins.size());                            
-  for (auto i=0ull; i < contents_of_bins.size(); ++i) {
+                            PsiAnalyticsContext &context) {
+  std::vector<std::vector<uint64_t>> contents_of_bins(content_of_bins.size());
+  for (auto i = 0ull; i < contents_of_bins.size(); ++i) {
     contents_of_bins.at(i).push_back(content_of_bins[i]);
   }
   InterpolatePolynomials(polynomials, contents_of_bins, masks, context);
@@ -832,14 +937,17 @@ void InterpolatePolynomialsPaddedWithDummies(
   for (auto i = 0ull, bin_counter = 0ull; i < context.polynomialsize;) {
     if (bin_counter < nbins_in_megabin) {
       if ((*masks_for_elems_in_bin).size() > 0) {
-        if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_SUM){
+        if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_SUM) {
           auto &random_value = *random_values_in_bin;
           auto c = 0ull;
           for (auto &mask : *masks_for_elems_in_bin) {
             X.at(i).elem = mask & __61_bit_mask;
-            Y.at(i).elem = X.at(i).elem ^ random_value[c];  // random_value_in_bin is t_j XOR Payload
+            Y.at(i).elem =
+                X.at(i).elem ^ random_value[c];  // random_value_in_bin is t_j XOR Payload
             ++i;
-            ++c;
+            if(random_value.size() > 1){  // only one random item per bucket (OPPRF1)
+              ++c;
+            }
           }
         } else {
           auto &random_value = *random_values_in_bin;
