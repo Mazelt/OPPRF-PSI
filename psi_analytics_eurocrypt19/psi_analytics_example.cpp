@@ -40,7 +40,7 @@ auto read_test_options(int32_t argcp, char **argvp) {
   ("polysize,s",     po::value<decltype(context.polynomialsize)>(&context.polynomialsize)->default_value(0u),       "Size of the polynomial(s), default: neles")
   ("functions,f",    po::value<decltype(context.nfuns)>(&context.nfuns)->default_value(2u),                         "Number of hash functions in hash tables")
   ("payload_a_bitlen", po::value<decltype(context.payload_bitlen)>(&context.payload_bitlen)->default_value(2u),  "Bit-length of payload A input")
-  ("type,y",         po::value<std::string>(&type)->default_value("None"),                                          "Function type {None, Threshold, Sum, SumIfGtThreshold, PayloadASum, PayloadASumGT}");  // clang-format on
+  ("type,y",         po::value<std::string>(&type)->default_value("None"),                                          "Function type {None, Threshold, Sum, SumIfGtThreshold, PayloadASum, PayloadASumGT, PayloadABSum, PayloadABSumGT}");  // clang-format on
 
   po::variables_map vm;
   try {
@@ -72,6 +72,8 @@ auto read_test_options(int32_t argcp, char **argvp) {
     context.analytics_type = ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM;
   } else if (type.compare("PayloadASumGT") == 0) {
     context.analytics_type = ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM_GT;
+  } else if (type.compare("PayloadABSum") == 0) {
+    context.analytics_type = ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM;
   } else {
     std::string error_msg(std::string("Unknown function type: " + type));
     throw std::runtime_error(error_msg.c_str());
@@ -97,15 +99,35 @@ int main(int argc, char **argv) {
   auto context = read_test_options(argc, argv);
   auto gen_bitlen = static_cast<std::size_t>(std::ceil(std::log2(context.neles))) + 3;
   auto inputs = ENCRYPTO::GeneratePseudoRandomElements(context.neles, gen_bitlen);
-  if (context.role == CLIENT && (
-      context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM || 
-      context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM_GT )) {
-    auto payloadA = ENCRYPTO::GenerateRandomPayload(context.neles, context.payload_bitlen, 1);
-    ENCRYPTO::run_psi_analytics(inputs, context, payloadA);
+  auto psi_type = context.analytics_type;
+
+  bool payload_b_if = (psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM ||
+                       psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM_GT);
+  bool payload_a_if = (payload_b_if || psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM ||
+                       psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM_GT);
+
+  std::vector<uint64_t> payload_a, payload_b;
+  
+  if (payload_a_if && payload_b_if) {
+    if (context.role == CLIENT) {
+      payload_a = ENCRYPTO::GenerateRandomPayload(context.neles, context.payload_bitlen, CLIENT);
+    } else {
+      payload_b = ENCRYPTO::GenerateRandomPayload(context.neles, context.payload_bitlen, SERVER);
+    }
+    ENCRYPTO::run_psi_analyticsAB(inputs, context, payload_a, payload_b);
+  } else if (payload_a_if) {
+    if (context.role == CLIENT){
+      payload_a = ENCRYPTO::GenerateRandomPayload(context.neles, context.payload_bitlen, CLIENT);
+      ENCRYPTO::run_psi_analytics(inputs, context, payload_a);
+    } else{
+      ENCRYPTO::run_psi_analytics(inputs, context);
+    }
   } else {
     ENCRYPTO::run_psi_analytics(inputs, context);
   }
+  
   std::cout << "PSI circuit successfully executed" << std::endl;
   PrintTimings(context);
   return EXIT_SUCCESS;
 }
+
