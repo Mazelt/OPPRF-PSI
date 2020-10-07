@@ -311,9 +311,9 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
     std::vector<uint64_t> payload_a_index;
     bins_2d = OpprgPsiClientAB(inputs, context, payload_a_index);
 
-    payload_a.reserve(bins_2d.size()); 
+    payload_a.reserve(bins_2d.size());
     for (auto &ind : payload_a_index) {
-      if (ind > bins_2d.size()){
+      if (ind > bins_2d.size()) {
         payload_a.push_back(0);
       } else {
         payload_a.push_back(payload_input_a[ind]);
@@ -332,10 +332,9 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
     bins2.push_back(bins_2d[i].second);
   }
 
-
   // instantiate ABY
   ABYParty party(static_cast<e_role>(context.role), context.address, context.port, LT, 64,
-                     context.nthreads);
+                 context.nthreads);
   party.ConnectAndBaseOTs();
   auto bc = dynamic_cast<BooleanCircuit *>(
       party.GetSharings().at(S_BOOL)->GetCircuitBuildRoutine());  // GMW circuit
@@ -356,23 +355,18 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
         share_ptr(bc->PutSIMDINGate(bins1.size(), bins1.data(), context.maxbitlen, SERVER));
     s_in_server_2 =
         share_ptr(bc->PutSIMDINGate(bins2.size(), bins2.data(), context.maxbitlen, SERVER));
-    s_in_client_1 =
-        share_ptr(bc->PutDummySIMDINGate(bins1.size(), context.maxbitlen));
-    s_in_client_2 =
-        share_ptr(bc->PutDummySIMDINGate(bins2.size(), context.maxbitlen));
-    s_in_payload_a =
-        share_ptr(bc->PutDummySIMDINGate(bins1.size(), context.payload_bitlen));
+    s_in_client_1 = share_ptr(bc->PutDummySIMDINGate(bins1.size(), context.maxbitlen));
+    s_in_client_2 = share_ptr(bc->PutDummySIMDINGate(bins2.size(), context.maxbitlen));
+    s_in_payload_a = share_ptr(bc->PutDummySIMDINGate(bins1.size(), context.payload_bitlen));
   } else {
-    s_in_server_1 =
-        share_ptr(bc->PutDummySIMDINGate(bins1.size(), context.maxbitlen));
-    s_in_server_2 =
-        share_ptr(bc->PutDummySIMDINGate(bins2.size(), context.maxbitlen));
+    s_in_server_1 = share_ptr(bc->PutDummySIMDINGate(bins1.size(), context.maxbitlen));
+    s_in_server_2 = share_ptr(bc->PutDummySIMDINGate(bins2.size(), context.maxbitlen));
     s_in_client_1 =
         share_ptr(bc->PutSIMDINGate(bins1.size(), bins1.data(), context.maxbitlen, CLIENT));
     s_in_client_2 =
         share_ptr(bc->PutSIMDINGate(bins2.size(), bins2.data(), context.maxbitlen, CLIENT));
-    s_in_payload_a =
-        share_ptr(bc->PutSIMDINGate(payload_a.size(), payload_a.data(), context.payload_bitlen, CLIENT));
+    s_in_payload_a = share_ptr(
+        bc->PutSIMDINGate(payload_a.size(), payload_a.data(), context.payload_bitlen, CLIENT));
   }
 
   // compare outputs of OPPRFs for each bin in ABY (using SIMD)
@@ -381,14 +375,19 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
   share_ptr s_out;
   auto t_bitlen = static_cast<std::size_t>(std::ceil(std::log2(context.threshold)));
   auto s_threshold = share_ptr(bc->PutCONSGate(context.threshold, t_bitlen));
+  auto s_threshold_yao = share_ptr(yc->PutCONSGate(context.threshold, t_bitlen));
+
   std::uint64_t const_zero = 0;
+  auto s_zero = share_ptr(bc->PutCONSGate(const_zero, 1));
   auto s_zeros = share_ptr(bc->PutSIMDCONSGate(bins2.size(), const_zero, 1));
+  auto s_zero_yao = share_ptr(yc->PutCONSGate(const_zero, 1));
 
   auto s_xor_payload_b = share_ptr(bc->PutXORGate(s_in_client_2.get(), s_in_server_2.get()));
-  auto s_mux_payload_b = share_ptr(bc->PutMUXGate(s_xor_payload_b.get(), s_zeros.get(), s_eq.get()));
+  auto s_mux_payload_b =
+      share_ptr(bc->PutMUXGate(s_xor_payload_b.get(), s_zeros.get(), s_eq.get()));
 
   share_ptr s_b_sum, s_a_sum, s_ab_sum;
-  if(context.payload_bitlen == 1) {
+  if (context.payload_bitlen == 1) {
     s_a_sum = BuildIntersectionSumHamming(s_in_payload_a, s_eq, (BooleanCircuit *)bc);
     s_b_sum = BuildIntersectionSumHamming(s_mux_payload_b, s_eq, (BooleanCircuit *)bc);
     s_ab_sum = share_ptr(bc->PutADDGate(s_a_sum.get(), s_b_sum.get()));
@@ -397,14 +396,26 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
         BuildIntersectionSum(s_in_payload_a, s_eq, (BooleanCircuit *)bc, (ArithmeticCircuit *)ac);
     s_b_sum =
         BuildIntersectionSum(s_mux_payload_b, s_eq, (BooleanCircuit *)bc, (ArithmeticCircuit *)ac);
-    s_ab_sum = share_ptr(ac->PutADDGate(s_a_sum.get(),s_b_sum.get()));
+    s_ab_sum = share_ptr(ac->PutADDGate(s_a_sum.get(), s_b_sum.get()));
+    // ac->PutPrintValueGate(s_ab_sum.get(), "AB_SUM");
   }
 
   if (context.payload_bitlen == 1) {
-    s_out = share_ptr(bc->PutOUTGate(s_ab_sum.get(), ALL));
+    if (context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM_GT) {
+      s_out = BuildGreaterThan(s_ab_sum, s_threshold, s_zero, (BooleanCircuit *)bc);
+      s_out = share_ptr(bc->PutOUTGate(s_out.get(), ALL));
+    } else {
+      s_out = share_ptr(bc->PutOUTGate(s_ab_sum.get(), ALL));
+    }
   } else {
-    s_out = share_ptr(ac->PutOUTGate(s_ab_sum.get(), ALL));
-  }  
+    if (context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM_GT) {
+      s_out = BuildGreaterThan(s_ab_sum, s_threshold_yao, s_zero_yao, (BooleanCircuit *)yc);
+      s_out = share_ptr(yc->PutOUTGate(s_out.get(), ALL));
+    } else {
+      s_out = share_ptr(ac->PutOUTGate(s_ab_sum.get(), ALL));
+    }
+  }
+
   party.ExecCircuit();
 
   // uint64_t *output;
@@ -417,7 +428,7 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
 
   // } else {
   //   throw std::runtime_error("Encountered an unknown analytics type");
-  // }  
+  // }
   context.timings.aby_setup = party.GetTiming(P_SETUP);
   context.timings.aby_online = party.GetTiming(P_ONLINE);
   context.timings.aby_total = context.timings.aby_setup + context.timings.aby_online;
@@ -937,7 +948,8 @@ void InterpolatePolynomialsPaddedWithDummies(
   for (auto i = 0ull, bin_counter = 0ull; i < context.polynomialsize;) {
     if (bin_counter < nbins_in_megabin) {
       if ((*masks_for_elems_in_bin).size() > 0) {
-        if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_SUM) {
+        if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_SUM ||
+            context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_SUM_GT) {
           auto &random_value = *random_values_in_bin;
           auto c = 0ull;
           for (auto &mask : *masks_for_elems_in_bin) {
@@ -945,7 +957,7 @@ void InterpolatePolynomialsPaddedWithDummies(
             Y.at(i).elem =
                 X.at(i).elem ^ random_value[c];  // random_value_in_bin is t_j XOR Payload
             ++i;
-            if(random_value.size() > 1){  // only one random item per bucket (OPPRF1)
+            if (random_value.size() > 1) {  // only one random item per bucket (OPPRF1)
               ++c;
             }
           }
