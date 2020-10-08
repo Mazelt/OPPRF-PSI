@@ -39,7 +39,7 @@ auto CreateContext(e_role role, uint64_t neles, uint64_t polynomialsize, uint64_
                                        nmegabins,
                                        1.27f,  // epsilon
                                        "127.0.0.1",
-                                       0, // payload_a_bitlen
+                                       0,  // payload_a_bitlen
                                        ENCRYPTO::PsiAnalyticsContext::SUM};
 }
 
@@ -47,27 +47,88 @@ bool comp(const std::pair<uint64_t, uint64_t> &a, const std::pair<uint64_t, uint
   return a.first < b.first;
 }
 
-auto PlaintextPayloadSum(std::vector<uint64_t> v1, std::vector<uint64_t> v2, std::vector<uint64_t> p_1) {
+auto PlaintextPayloadSum(std::vector<uint64_t> v1, std::vector<uint64_t> v2,
+                         std::vector<uint64_t> p_1) {
   // ATTENTION: payload is sorted after the v1 vector's order.!!!!!
-  std::vector<std::pair<uint64_t,uint64_t>> v1_p;
-  std::vector<std::pair<uint64_t,uint64_t>> v2_p; // dummy
-  std::vector<std::pair<uint64_t,uint64_t>> intersection_p;
+  std::vector<std::pair<uint64_t, uint64_t>> v1_p;
+  std::vector<std::pair<uint64_t, uint64_t>> v2_p;  // dummy
+  std::vector<std::pair<uint64_t, uint64_t>> intersection_p;
 
-  for (auto i=0; i < v1.size(); ++i){
-    v1_p.push_back(std::make_pair(v1[i],p_1[i]));
+  for (auto i = 0; i < v1.size(); ++i) {
+    v1_p.push_back(std::make_pair(v1[i], p_1[i]));
   }
 
   for (auto i = 0; i < v2.size(); ++i) {
-    v2_p.push_back(std::make_pair(v2[i],0));
+    v2_p.push_back(std::make_pair(v2[i], 0));
   }
   std::sort(v1_p.begin(), v1_p.end());
   std::sort(v2_p.begin(), v2_p.end());
 
-  std::set_intersection(v1_p.begin(), v1_p.end(), v2_p.begin(), v2_p.end(), back_inserter(intersection_p), comp);
+  std::set_intersection(v1_p.begin(), v1_p.end(), v2_p.begin(), v2_p.end(),
+                        back_inserter(intersection_p), comp);
 
   uint64_t sum = 0;
-  for (auto i=0; i < intersection_p.size(); ++i) {
+  for (auto i = 0; i < intersection_p.size(); ++i) {
     sum += intersection_p[i].second;
+  }
+  // std::cout << "SUM" << sum << std::endl;
+  return sum;
+}
+
+auto PlaintextPayloadSum(std::vector<uint64_t> v1, std::vector<uint64_t> v2,
+                         std::vector<uint64_t> p_1, std::vector<uint64_t> p_2) {
+  std::vector<std::pair<uint64_t, uint64_t>> v1_p;
+  std::vector<std::pair<uint64_t, uint64_t>> v2_p;  // dummy
+  std::vector<std::pair<uint64_t, uint64_t>> intersection_p_1;
+  std::vector<std::pair<uint64_t, uint64_t>> intersection_p_2;
+
+  for (auto i = 0; i < v1.size(); ++i) {
+    v1_p.push_back(std::make_pair(v1[i], p_1[i]));
+  }
+
+  for (auto i = 0; i < v2.size(); ++i) {
+    v2_p.push_back(std::make_pair(v2[i], p_2[i]));
+  }
+  std::sort(v1_p.begin(), v1_p.end());
+  std::sort(v2_p.begin(), v2_p.end());
+
+  std::set_intersection(v1_p.begin(), v1_p.end(), v2_p.begin(), v2_p.end(),
+                        back_inserter(intersection_p_1), comp);
+  std::set_intersection(v2_p.begin(), v2_p.end(), v1_p.begin(), v1_p.end(),
+                        back_inserter(intersection_p_2), comp);
+  uint64_t sum = 0;
+  for (auto i = 0; i < intersection_p_1.size(); ++i) {
+    sum += intersection_p_1[i].second + intersection_p_2[i].second;
+  }
+  // std::cout << "SUM" << sum << std::endl;
+  return sum;
+}
+
+auto PlaintextPayloadMulSum(std::vector<uint64_t> v1, std::vector<uint64_t> v2,
+                            std::vector<uint64_t> p_1, std::vector<uint64_t> p_2) {
+
+  std::vector<std::pair<uint64_t, uint64_t>> v1_p;
+  std::vector<std::pair<uint64_t, uint64_t>> v2_p;  // dummy
+  std::vector<std::pair<uint64_t, uint64_t>> intersection_p_1;
+  std::vector<std::pair<uint64_t, uint64_t>> intersection_p_2;
+
+  for (auto i = 0; i < v1.size(); ++i) {
+    v1_p.push_back(std::make_pair(v1[i], p_1[i]));
+  }
+
+  for (auto i = 0; i < v2.size(); ++i) {
+    v2_p.push_back(std::make_pair(v2[i], p_2[i]));
+  }
+  std::sort(v1_p.begin(), v1_p.end());
+  std::sort(v2_p.begin(), v2_p.end());
+
+  std::set_intersection(v1_p.begin(), v1_p.end(), v2_p.begin(), v2_p.end(),
+                        back_inserter(intersection_p_1), comp);
+  std::set_intersection(v2_p.begin(), v2_p.end(), v1_p.begin(), v1_p.end(),
+                        back_inserter(intersection_p_2), comp);
+  uint64_t sum = 0;
+  for (auto i = 0; i < intersection_p_1.size(); ++i) {
+    sum += intersection_p_1[i].second * intersection_p_2[i].second;
   }
   // std::cout << "SUM" << sum << std::endl;
   return sum;
@@ -200,14 +261,15 @@ void PsiAnalyticsSumTest(ENCRYPTO::PsiAnalyticsContext client_context,
 }
 
 void PsiAnalyticsPayloadASumTest(ENCRYPTO::PsiAnalyticsContext client_context,
-                              ENCRYPTO::PsiAnalyticsContext server_context) {
+                                 ENCRYPTO::PsiAnalyticsContext server_context) {
   auto client_inputs = ENCRYPTO::GeneratePseudoRandomElements(client_context.neles, 15, 0);
   auto server_inputs = ENCRYPTO::GeneratePseudoRandomElements(server_context.neles, 15, 0);
 
   auto plain_intersection_size = ENCRYPTO::PlainIntersectionSize(client_inputs, server_inputs);
   assert(plain_intersection_size != 0);
 
-  std::vector<uint64_t> payload_a = ENCRYPTO::GenerateRandomPayload(client_context.neles, client_context.payload_bitlen, 2);
+  std::vector<uint64_t> payload_a =
+      ENCRYPTO::GenerateRandomPayload(client_context.neles, client_context.payload_bitlen, 2);
 
   auto plain_intersection_payload_sum =
       PlaintextPayloadSum(client_inputs, server_inputs, payload_a);
@@ -228,17 +290,13 @@ void PsiAnalyticsPayloadASumTest(ENCRYPTO::PsiAnalyticsContext client_context,
   }
 }
 
-
-
-
 void PsiAnalyticsPayloadASumGTTest(ENCRYPTO::PsiAnalyticsContext client_context,
-                              ENCRYPTO::PsiAnalyticsContext server_context) {
+                                   ENCRYPTO::PsiAnalyticsContext server_context) {
   auto client_inputs = ENCRYPTO::GeneratePseudoRandomElements(client_context.neles, 15, 0);
   auto server_inputs = ENCRYPTO::GeneratePseudoRandomElements(server_context.neles, 15, 1);
 
   auto plain_intersection_size = ENCRYPTO::PlainIntersectionSize(client_inputs, server_inputs);
   assert(plain_intersection_size != 0);
-
 
   std::vector<uint64_t> payload_a =
       ENCRYPTO::GenerateRandomPayload(client_context.neles, client_context.payload_bitlen, 2);
@@ -266,7 +324,7 @@ void PsiAnalyticsPayloadASumGTTest(ENCRYPTO::PsiAnalyticsContext client_context,
   }
 
   server_context.threshold = client_context.threshold = plain_intersection_payload_sum + 1;
-  
+
   // should return 0 as payload intersection sum is < threshold
   {
     std::thread client_thread(
@@ -283,7 +341,7 @@ void PsiAnalyticsPayloadASumGTTest(ENCRYPTO::PsiAnalyticsContext client_context,
 }
 
 void PsiAnalyticsPayloadABSumTest(ENCRYPTO::PsiAnalyticsContext client_context,
-                              ENCRYPTO::PsiAnalyticsContext server_context) {
+                                  ENCRYPTO::PsiAnalyticsContext server_context) {
   auto client_inputs = ENCRYPTO::GeneratePseudoRandomElements(client_context.neles, 15, 0);
   auto server_inputs = ENCRYPTO::GeneratePseudoRandomElements(server_context.neles, 15, 1);
   auto plain_intersection_size = ENCRYPTO::PlainIntersectionSize(client_inputs, server_inputs);
@@ -292,24 +350,21 @@ void PsiAnalyticsPayloadABSumTest(ENCRYPTO::PsiAnalyticsContext client_context,
   std::vector<uint64_t> payload_a =
       ENCRYPTO::GenerateRandomPayload(client_context.neles, client_context.payload_bitlen, 2);
   std::vector<uint64_t> payload_b =
-      ENCRYPTO::GenerateRandomPayload(server_context.neles,
-      client_context.payload_bitlen, 3);
-  auto plain_intersection_payload_a_sum =
-      PlaintextPayloadSum(client_inputs, server_inputs, payload_a);
-  auto plain_intersection_payload_b_sum =
-      PlaintextPayloadSum(server_inputs, client_inputs, payload_b);
-  auto plain_intersection_payload_ab_sum = plain_intersection_payload_a_sum + plain_intersection_payload_b_sum;
-  // std::cout << "plain inter ab sum " << plain_intersection_payload_ab_sum;
+      ENCRYPTO::GenerateRandomPayload(server_context.neles, client_context.payload_bitlen, 3);
+  auto plain_intersection_payload_ab_sum =
+      PlaintextPayloadSum(client_inputs, server_inputs, payload_a, payload_b);
 
   std::vector<uint64_t> dummy_payload;
 
   std::uint64_t psi_client, psi_server;
 
   {
-    std::thread client_thread(
-        [&]() { psi_client = run_psi_analyticsAB(client_inputs, client_context, payload_a, dummy_payload); });
-    std::thread server_thread(
-        [&]() { psi_server = run_psi_analyticsAB(server_inputs, server_context, dummy_payload, payload_b); });
+    std::thread client_thread([&]() {
+      psi_client = run_psi_analyticsAB(client_inputs, client_context, payload_a, dummy_payload);
+    });
+    std::thread server_thread([&]() {
+      psi_server = run_psi_analyticsAB(server_inputs, server_context, dummy_payload, payload_b);
+    });
 
     client_thread.join();
     server_thread.join();
@@ -320,7 +375,7 @@ void PsiAnalyticsPayloadABSumTest(ENCRYPTO::PsiAnalyticsContext client_context,
 }
 
 void PsiAnalyticsPayloadABSumGTTest(ENCRYPTO::PsiAnalyticsContext client_context,
-                                   ENCRYPTO::PsiAnalyticsContext server_context) {
+                                    ENCRYPTO::PsiAnalyticsContext server_context) {
   auto client_inputs = ENCRYPTO::GeneratePseudoRandomElements(client_context.neles, 15, 0);
   auto server_inputs = ENCRYPTO::GeneratePseudoRandomElements(server_context.neles, 15, 1);
   auto plain_intersection_size = ENCRYPTO::PlainIntersectionSize(client_inputs, server_inputs);
@@ -329,13 +384,9 @@ void PsiAnalyticsPayloadABSumGTTest(ENCRYPTO::PsiAnalyticsContext client_context
       ENCRYPTO::GenerateRandomPayload(client_context.neles, client_context.payload_bitlen, 2);
   std::vector<uint64_t> payload_b =
       ENCRYPTO::GenerateRandomPayload(server_context.neles, client_context.payload_bitlen, 3);
-  auto plain_intersection_payload_a_sum =
-      PlaintextPayloadSum(client_inputs, server_inputs, payload_a);
-  auto plain_intersection_payload_b_sum =
-      PlaintextPayloadSum(server_inputs, client_inputs, payload_b);
   auto plain_intersection_payload_ab_sum =
-      plain_intersection_payload_a_sum + plain_intersection_payload_b_sum;
-  // std::cout << "plain inter ab sum " << plain_intersection_payload_ab_sum; 
+      PlaintextPayloadSum(client_inputs, server_inputs, payload_a, payload_b);
+  // std::cout << "plain inter ab sum " << plain_intersection_payload_ab_sum;
   client_context.threshold = plain_intersection_payload_ab_sum - 1;
   server_context.threshold = client_context.threshold;
   std::vector<uint64_t> dummy_payload;
@@ -343,10 +394,12 @@ void PsiAnalyticsPayloadABSumGTTest(ENCRYPTO::PsiAnalyticsContext client_context
   std::uint64_t psi_client, psi_server;
 
   {
-    std::thread client_thread(
-        [&]() { psi_client = run_psi_analyticsAB(client_inputs, client_context, payload_a, dummy_payload); });
-    std::thread server_thread(
-        [&]() { psi_server = run_psi_analyticsAB(server_inputs, server_context, dummy_payload, payload_b); });
+    std::thread client_thread([&]() {
+      psi_client = run_psi_analyticsAB(client_inputs, client_context, payload_a, dummy_payload);
+    });
+    std::thread server_thread([&]() {
+      psi_server = run_psi_analyticsAB(server_inputs, server_context, dummy_payload, payload_b);
+    });
 
     client_thread.join();
     server_thread.join();
@@ -359,16 +412,54 @@ void PsiAnalyticsPayloadABSumGTTest(ENCRYPTO::PsiAnalyticsContext client_context
 
   // should return 0 as payload intersection sum is < threshold
   {
-    std::thread client_thread(
-        [&]() { psi_client = run_psi_analyticsAB(client_inputs, client_context, payload_a, dummy_payload); });
-    std::thread server_thread(
-        [&]() { psi_server = run_psi_analyticsAB(server_inputs, server_context, dummy_payload, payload_b); });
+    std::thread client_thread([&]() {
+      psi_client = run_psi_analyticsAB(client_inputs, client_context, payload_a, dummy_payload);
+    });
+    std::thread server_thread([&]() {
+      psi_server = run_psi_analyticsAB(server_inputs, server_context, dummy_payload, payload_b);
+    });
 
     client_thread.join();
     server_thread.join();
 
     ASSERT_EQ(psi_client, 0u);
     ASSERT_EQ(psi_server, 0u);
+  }
+}
+
+void PsiAnalyticsPayloadABMulSumTest(ENCRYPTO::PsiAnalyticsContext client_context,
+                                     ENCRYPTO::PsiAnalyticsContext server_context) {
+  auto client_inputs = ENCRYPTO::GeneratePseudoRandomElements(client_context.neles, 15, 0);
+  auto server_inputs = ENCRYPTO::GeneratePseudoRandomElements(server_context.neles, 15, 1);
+  auto plain_intersection_size = ENCRYPTO::PlainIntersectionSize(client_inputs, server_inputs);
+  assert(plain_intersection_size != 0);
+
+  std::vector<uint64_t> payload_a =
+      ENCRYPTO::GenerateRandomPayload(client_context.neles, client_context.payload_bitlen, 2);
+  std::vector<uint64_t> payload_b =
+      ENCRYPTO::GenerateRandomPayload(server_context.neles, client_context.payload_bitlen, 3);
+
+  auto plain_intersection_payload_ab_mul_sum = PlaintextPayloadMulSum(client_inputs, server_inputs, payload_a, payload_b);
+  
+  // std::cout << "plain inter ab sum " << plain_intersection_payload_ab_sum;
+
+  std::vector<uint64_t> dummy_payload;
+
+  std::uint64_t psi_client, psi_server;
+
+  {
+    std::thread client_thread([&]() {
+      psi_client = run_psi_analyticsAB(client_inputs, client_context, payload_a, dummy_payload);
+    });
+    std::thread server_thread([&]() {
+      psi_server = run_psi_analyticsAB(server_inputs, server_context, dummy_payload, payload_b);
+    });
+
+    client_thread.join();
+    server_thread.join();
+
+    ASSERT_EQ(psi_client, plain_intersection_payload_ab_mul_sum);
+    ASSERT_EQ(psi_server, plain_intersection_payload_ab_mul_sum);
   }
 }
 
@@ -398,6 +489,65 @@ void PsiAnalyticsTest(std::size_t elem_bitlen, bool random, uint64_t neles, uint
 
   ASSERT_EQ(psi_client, plain_intersection_size);
   ASSERT_EQ(psi_server, plain_intersection_size);
+}
+
+TEST(PSI_ANALYTICS, pow_2_12_payABMul) {
+  for (auto i = 0ull; i < ITERATIONS; ++i) {
+    // client's context
+    ENCRYPTO::PsiAnalyticsContext cc{7777,  // port
+                                     CLIENT,
+                                     61,  // bitlength
+                                     NELES_2_12,
+                                     static_cast<uint64_t>(NELES_2_12 * 1.27f),
+                                     0,  // # other party's elements
+                                     1,  // # threads
+                                     3,  // # hash functions
+                                     1,  // threshold
+                                     POLYNOMIALSIZE_2_12,
+                                     POLYNOMIALSIZE_2_12 * sizeof(uint64_t),
+                                     NMEGABINS_2_12,
+                                     1.27f,  // epsilon
+                                     "127.0.0.1",
+                                     2,  // payload_a_bitlen
+                                     ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM};
+
+    // server's context
+    ENCRYPTO::PsiAnalyticsContext sc{7777,  // port
+                                     SERVER,
+                                     61,  // bitlength
+                                     NELES_2_12,
+                                     static_cast<uint64_t>(NELES_2_12 * 1.27f),
+                                     0,  // # other party's elements
+                                     1,  // # threads
+                                     3,  // # hash functions
+                                     1,  // threshold
+                                     POLYNOMIALSIZE_2_12,
+                                     POLYNOMIALSIZE_2_12 * sizeof(uint64_t),
+                                     NMEGABINS_2_12,
+                                     1.27f,  // epsilon
+                                     "127.0.0.1",
+                                     2,  // payload_a_bitlen
+                                     ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM};
+    PsiAnalyticsPayloadABMulSumTest(cc, sc);
+  }
+}
+
+TEST(PSI_ANALYTICS, helper_function_test){
+  std::vector<uint64_t> elements_a = {1,2,3,4,5,6,7,8};
+  std::vector<uint64_t> elements_b = {4,5,6,7,8,9,10,11};
+  std::vector<uint64_t> payload_a =  {1,2,3,4,5,6,7,8};
+  std::vector<uint64_t> payload_b =  {11,12,13,14,15,16,17,18};
+
+  auto plaintextIntesectionSize = ENCRYPTO::PlainIntersectionSize(elements_a, elements_b);
+  ASSERT_EQ(plaintextIntesectionSize, 5);
+  auto plaintextIntersectionASum = PlaintextPayloadSum(elements_a, elements_b, payload_a);
+  ASSERT_EQ(plaintextIntersectionASum, 4+5+6+7+8);
+  auto plaintextIntersectionBSum = PlaintextPayloadSum(elements_b, elements_a, payload_b);
+  ASSERT_EQ(plaintextIntersectionBSum, 11+12+13+14+15);
+  auto plaintextIntersectionABSum = PlaintextPayloadSum(elements_a, elements_b, payload_a, payload_b);
+  ASSERT_EQ(plaintextIntersectionABSum, plaintextIntersectionASum + plaintextIntersectionBSum);
+  auto plaintextIntersectionABMulSum = PlaintextPayloadMulSum(elements_a, elements_b, payload_a, payload_b);
+  ASSERT_EQ(plaintextIntersectionABMulSum, 4*11+5*12+6*13+7*14+8*15);
 }
 
 TEST(PSI_ANALYTICS, pow_2_12_payABGT) {
@@ -540,7 +690,7 @@ TEST(PSI_ANALYTICS, pow_2_12_payA) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
-                                     2, // payload_a_bitlen
+                                     2,  // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM};
 
     // server's context
@@ -558,7 +708,7 @@ TEST(PSI_ANALYTICS, pow_2_12_payA) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
-                                     2, // payload_a_bitlen
+                                     2,  // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM};
     PsiAnalyticsPayloadASumTest(cc, sc);
   }
@@ -581,7 +731,7 @@ TEST(PSI_ANALYTICS, pow_2_12_threshold) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
-                                     0, // payload_a_bitlen
+                                     0,  // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::THRESHOLD};
 
     // server's context
@@ -599,7 +749,7 @@ TEST(PSI_ANALYTICS, pow_2_12_threshold) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
-                                     0, // payload_a_bitlen
+                                     0,  // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::THRESHOLD};
     PsiAnalyticsThresholdTest(cc, sc);
   }
@@ -622,7 +772,7 @@ TEST(PSI_ANALYTICS, pow_2_12_sum_if_gt_threshold) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
-                                     0, // payload_a_bitlen
+                                     0,  // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::SUM_IF_GT_THRESHOLD};
     // server's context
     ENCRYPTO::PsiAnalyticsContext sc{7777,  // port
@@ -639,7 +789,7 @@ TEST(PSI_ANALYTICS, pow_2_12_sum_if_gt_threshold) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
-                                     0, // payload_a_bitlen
+                                     0,  // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::SUM_IF_GT_THRESHOLD};
     PsiAnalyticsSumIfGtThresholdTest(cc, sc);
   }
@@ -662,7 +812,7 @@ TEST(PSI_ANALYTICS, pow_2_12_sum) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
-                                     0, // payload_a_bitlen
+                                     0,  // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::SUM};
 
     // server's context
@@ -680,7 +830,7 @@ TEST(PSI_ANALYTICS, pow_2_12_sum) {
                                      NMEGABINS_2_12,
                                      1.27f,  // epsilon
                                      "127.0.0.1",
-                                     0, // payload_a_bitlen
+                                     0,  // payload_a_bitlen
                                      ENCRYPTO::PsiAnalyticsContext::SUM};
     PsiAnalyticsSumTest(cc, sc);
   }

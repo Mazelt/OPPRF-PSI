@@ -259,15 +259,20 @@ share_ptr BuildIntersectionSum(share_ptr s_payload, share_ptr s_eq, BooleanCircu
 
   auto s_payload_mux = share_ptr(bc->PutMUXGate(s_payload.get(), s_zeros.get(), s_eq.get()));
   auto s_payload_ac = share_ptr(ac->PutB2AGate(s_payload_mux.get()));
-  s_payload_ac = share_ptr(ac->PutSplitterGate(s_payload_ac.get()));
-  for (auto i = 1; i < s_payload->get_nvals(); i++) {
-    s_payload_ac->set_wire_id(
+  return BuildSum(s_payload_ac, (ArithmeticCircuit*) ac);
+}
+
+share_ptr BuildSum(share_ptr s_a, ArithmeticCircuit *ac) {
+  auto nvals = s_a->get_nvals();
+  s_a = share_ptr(ac->PutSplitterGate(s_a.get()));
+  for (auto i = 1; i < nvals; i++) {
+    s_a->set_wire_id(
         0, ac->PutADDGate(
-               s_payload_ac->get_wire_id(0),
-               s_payload_ac->get_wire_id(i)));  // add gates are free for arithmetic circuits
+               s_a->get_wire_id(0),
+               s_a->get_wire_id(i)));  // add gates are free for arithmetic circuits
   }
-  s_payload_ac->set_bitlength(1);  // we only need the result.
-  return s_payload_ac;
+  s_a->set_bitlength(1);  // we only need the result.
+  return s_a;
 }
 
 share_ptr BuildGreaterThan(share_ptr s_in, share_ptr s_threshold, share_ptr s_zero,
@@ -385,18 +390,31 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
   auto s_xor_payload_b = share_ptr(bc->PutXORGate(s_in_client_2.get(), s_in_server_2.get()));
   auto s_mux_payload_b =
       share_ptr(bc->PutMUXGate(s_xor_payload_b.get(), s_zeros.get(), s_eq.get()));
+  auto s_mux_payload_a = share_ptr(bc->PutMUXGate(s_in_payload_a.get(), s_zeros.get(), s_eq.get()));
 
-  share_ptr s_b_sum, s_a_sum, s_ab_sum;
+  share_ptr s_b_sum, s_a_sum, s_ab_sum, s_mul_ab;
   if (context.payload_bitlen == 1) {
-    s_a_sum = BuildIntersectionSumHamming(s_in_payload_a, s_eq, (BooleanCircuit *)bc);
-    s_b_sum = BuildIntersectionSumHamming(s_mux_payload_b, s_eq, (BooleanCircuit *)bc);
-    s_ab_sum = share_ptr(bc->PutADDGate(s_a_sum.get(), s_b_sum.get()));
+    if (context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM) {
+      s_mul_ab = share_ptr(bc->PutANDGate(s_in_payload_a.get(), s_mux_payload_b.get()));
+      auto s_rotated = share_ptr(bc->PutSplitterGate(s_mul_ab.get()));
+      s_ab_sum = share_ptr(bc->PutHammingWeightGate(s_rotated.get()));
+    } else {
+      s_a_sum = BuildIntersectionSumHamming(s_in_payload_a, s_eq, (BooleanCircuit *)bc);
+      s_b_sum = BuildIntersectionSumHamming(s_mux_payload_b, s_eq, (BooleanCircuit *)bc);
+      s_ab_sum = share_ptr(bc->PutADDGate(s_a_sum.get(), s_b_sum.get()));
+    }
   } else {
-    s_a_sum =
-        BuildIntersectionSum(s_in_payload_a, s_eq, (BooleanCircuit *)bc, (ArithmeticCircuit *)ac);
-    s_b_sum =
-        BuildIntersectionSum(s_mux_payload_b, s_eq, (BooleanCircuit *)bc, (ArithmeticCircuit *)ac);
-    s_ab_sum = share_ptr(ac->PutADDGate(s_a_sum.get(), s_b_sum.get()));
+    if (context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM) {
+      s_mul_ab = share_ptr(bc->PutMULGate(s_mux_payload_a.get(), s_xor_payload_b.get()));
+      auto s_mul_ab_ac = share_ptr(ac->PutB2AGate(s_mul_ab.get()));
+      s_ab_sum = BuildSum(s_mul_ab_ac, (ArithmeticCircuit*)ac);
+    } else {
+      s_a_sum =
+          BuildIntersectionSum(s_in_payload_a, s_eq, (BooleanCircuit *)bc, (ArithmeticCircuit *)ac);
+      s_b_sum = BuildIntersectionSum(s_mux_payload_b, s_eq, (BooleanCircuit *)bc,
+                                     (ArithmeticCircuit *)ac);
+      s_ab_sum = share_ptr(ac->PutADDGate(s_a_sum.get(), s_b_sum.get()));
+    }
     // ac->PutPrintValueGate(s_ab_sum.get(), "AB_SUM");
   }
 
@@ -949,7 +967,8 @@ void InterpolatePolynomialsPaddedWithDummies(
     if (bin_counter < nbins_in_megabin) {
       if ((*masks_for_elems_in_bin).size() > 0) {
         if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_SUM ||
-            context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_SUM_GT) {
+            context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_SUM_GT ||
+            context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM) {
           auto &random_value = *random_values_in_bin;
           auto c = 0ull;
           for (auto &mask : *masks_for_elems_in_bin) {

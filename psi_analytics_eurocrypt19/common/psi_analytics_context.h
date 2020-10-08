@@ -49,7 +49,8 @@ struct PsiAnalyticsContext {
         PAYLOAD_A_SUM,         // sum of payload values (sender parties) of matched elements
         PAYLOAD_A_SUM_GT,      // same as PAYLOAD_A_SUM but only if threshold is reached.
         PAYLOAD_AB_SUM,
-        PAYLOAD_AB_SUM_GT
+        PAYLOAD_AB_SUM_GT,
+        PAYLOAD_AB_MUL_SUM
       } analytics_type;
 
   const uint64_t maxbitlen = 61;

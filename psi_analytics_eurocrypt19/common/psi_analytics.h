@@ -50,6 +50,7 @@ std::shared_ptr<share> BuildIntersectionSum(std::shared_ptr<share> s_payload,
 std::shared_ptr<share> BuildGreaterThan(std::shared_ptr<share> s_in,
                                         std::shared_ptr<share> s_threshold,
                                         std::shared_ptr<share> s_zero, BooleanCircuit *circ);
+std::shared_ptr<share> BuildSum(std::shared_ptr<share> s_a, ArithmeticCircuit *ac);
 
 std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClient(const std::vector<uint64_t> &elements,
                                                           PsiAnalyticsContext &context);
