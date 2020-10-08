@@ -74,6 +74,8 @@ auto read_test_options(int32_t argcp, char **argvp) {
     context.analytics_type = ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM_GT;
   } else if (type.compare("PayloadABSum") == 0) {
     context.analytics_type = ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM;
+  } else if (type.compare("PayloadABSumGT") == 0) {
+    context.analytics_type = ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM_GT;
   } else {
     std::string error_msg(std::string("Unknown function type: " + type));
     throw std::runtime_error(error_msg.c_str());
