@@ -394,7 +394,8 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
 
   share_ptr s_b_sum, s_a_sum, s_ab_sum, s_mul_ab;
   if (context.payload_bitlen == 1) {
-    if (context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM) {
+    if (context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM ||
+        context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM_GT) {
       s_mul_ab = share_ptr(bc->PutANDGate(s_in_payload_a.get(), s_mux_payload_b.get()));
       auto s_rotated = share_ptr(bc->PutSplitterGate(s_mul_ab.get()));
       s_ab_sum = share_ptr(bc->PutHammingWeightGate(s_rotated.get()));
@@ -404,7 +405,8 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
       s_ab_sum = share_ptr(bc->PutADDGate(s_a_sum.get(), s_b_sum.get()));
     }
   } else {
-    if (context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM) {
+    if (context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM ||
+        context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM_GT) {
       s_mul_ab = share_ptr(bc->PutMULGate(s_mux_payload_a.get(), s_xor_payload_b.get()));
       auto s_mul_ab_ac = share_ptr(ac->PutB2AGate(s_mul_ab.get()));
       s_ab_sum = BuildSum(s_mul_ab_ac, (ArithmeticCircuit*)ac);
@@ -419,14 +421,16 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
   }
 
   if (context.payload_bitlen == 1) {
-    if (context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM_GT) {
+    if (context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM_GT ||
+        context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM_GT) {
       s_out = BuildGreaterThan(s_ab_sum, s_threshold, s_zero, (BooleanCircuit *)bc);
       s_out = share_ptr(bc->PutOUTGate(s_out.get(), ALL));
     } else {
       s_out = share_ptr(bc->PutOUTGate(s_ab_sum.get(), ALL));
     }
   } else {
-    if (context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM_GT) {
+    if (context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM_GT ||
+        context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM_GT) {
       s_out = BuildGreaterThan(s_ab_sum, s_threshold_yao, s_zero_yao, (BooleanCircuit *)yc);
       s_out = share_ptr(yc->PutOUTGate(s_out.get(), ALL));
     } else {
@@ -968,7 +972,8 @@ void InterpolatePolynomialsPaddedWithDummies(
       if ((*masks_for_elems_in_bin).size() > 0) {
         if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_SUM ||
             context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_SUM_GT ||
-            context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM) {
+            context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM ||
+            context.analytics_type == PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM_GT) {
           auto &random_value = *random_values_in_bin;
           auto c = 0ull;
           for (auto &mask : *masks_for_elems_in_bin) {

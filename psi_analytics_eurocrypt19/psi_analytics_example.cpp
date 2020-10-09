@@ -40,7 +40,7 @@ auto read_test_options(int32_t argcp, char **argvp) {
   ("polysize,s",     po::value<decltype(context.polynomialsize)>(&context.polynomialsize)->default_value(0u),       "Size of the polynomial(s), default: neles")
   ("functions,f",    po::value<decltype(context.nfuns)>(&context.nfuns)->default_value(2u),                         "Number of hash functions in hash tables")
   ("payload_a_bitlen", po::value<decltype(context.payload_bitlen)>(&context.payload_bitlen)->default_value(2u),  "Bit-length of payload A input")
-  ("type,y",         po::value<std::string>(&type)->default_value("None"),                                          "Function type {None, Threshold, Sum, SumIfGtThreshold, PayloadASum, PayloadASumGT, PayloadABSum, PayloadABSumGT, PayloadABMulSum}");  // clang-format on
+  ("type,y",         po::value<std::string>(&type)->default_value("None"),                                          "Function type {None, Threshold, Sum, SumIfGtThreshold, PayloadASum, PayloadASumGT, PayloadABSum, PayloadABSumGT, PayloadABMulSum, PayloadABMulSumGT}");  // clang-format on
 
   po::variables_map vm;
   try {
@@ -78,6 +78,8 @@ auto read_test_options(int32_t argcp, char **argvp) {
     context.analytics_type = ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM_GT;
   } else if (type.compare("PayloadABMulSum") == 0) {
     context.analytics_type = ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM;
+  } else if (type.compare("PayloadABMulSumGT") == 0) {
+    context.analytics_type = ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM_GT;
   } else {
     std::string error_msg(std::string("Unknown function type: " + type));
     throw std::runtime_error(error_msg.c_str());
@@ -107,7 +109,8 @@ int main(int argc, char **argv) {
 
   bool payload_b_if = (psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM ||
                        psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM_GT ||
-                       psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM);
+                       psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM ||
+                       psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM_GT);
   bool payload_a_if = (payload_b_if || psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM ||
                        psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM_GT);
 
