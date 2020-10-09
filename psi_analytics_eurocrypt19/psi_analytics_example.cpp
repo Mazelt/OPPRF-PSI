@@ -115,27 +115,15 @@ int main(int argc, char **argv) {
                        psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM_GT);
 
   std::vector<uint64_t> payload_a, payload_b;
-  
-  if (payload_a_if && payload_b_if) {
-    if (context.role == CLIENT) {
-      payload_a = ENCRYPTO::GenerateRandomPayload(context.neles, context.payload_bitlen, CLIENT);
-    } else {
-      payload_b = ENCRYPTO::GenerateRandomPayload(context.neles, context.payload_bitlen, SERVER);
-    }
-    ENCRYPTO::run_psi_analyticsAB(inputs, context, payload_a, payload_b);
-  } else if (payload_a_if) {
-    if (context.role == CLIENT){
-      payload_a = ENCRYPTO::GenerateRandomPayload(context.neles, context.payload_bitlen, CLIENT);
-      ENCRYPTO::run_psi_analytics(inputs, context, payload_a);
-    } else{
-      ENCRYPTO::run_psi_analytics(inputs, context);
-    }
-  } else {
-    ENCRYPTO::run_psi_analytics(inputs, context);
+
+  if (context.role == CLIENT && payload_a_if) {
+    payload_a = ENCRYPTO::GenerateRandomPayload(context.neles, context.payload_bitlen, CLIENT);
+  } else if (context.role == SERVER && payload_b_if) {
+    payload_b = ENCRYPTO::GenerateRandomPayload(context.neles, context.payload_bitlen, SERVER);
   }
-  
-  std::cout << "PSI circuit successfully executed" << std::endl;
+  auto out = ENCRYPTO::run_psi_analytics(inputs, context, payload_a, payload_b);
+
+  std::cout << "PSI circuit successfully executed. Result: " << out << std::endl;
   PrintTimings(context);
   return EXIT_SUCCESS;
 }
-

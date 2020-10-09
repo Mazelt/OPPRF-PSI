@@ -38,6 +38,10 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
 uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
                            const std::vector<std::uint64_t> &payload_input_a);
 
+uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
+                             const std::vector<std::uint64_t> &payload_input_a,
+                             const std::vector<std::uint64_t> &payload_input_b);
+
 uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
                              const std::vector<std::uint64_t> &payload_input_a,
                              const std::vector<std::uint64_t> &payload_input_b);

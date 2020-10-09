@@ -360,10 +360,10 @@ void PsiAnalyticsPayloadABSumTest(ENCRYPTO::PsiAnalyticsContext client_context,
 
   {
     std::thread client_thread([&]() {
-      psi_client = run_psi_analyticsAB(client_inputs, client_context, payload_a, dummy_payload);
+      psi_client = run_psi_analytics(client_inputs, client_context, payload_a, dummy_payload);
     });
     std::thread server_thread([&]() {
-      psi_server = run_psi_analyticsAB(server_inputs, server_context, dummy_payload, payload_b);
+      psi_server = run_psi_analytics(server_inputs, server_context, dummy_payload, payload_b);
     });
 
     client_thread.join();
@@ -395,10 +395,10 @@ void PsiAnalyticsPayloadABSumGTTest(ENCRYPTO::PsiAnalyticsContext client_context
 
   {
     std::thread client_thread([&]() {
-      psi_client = run_psi_analyticsAB(client_inputs, client_context, payload_a, dummy_payload);
+      psi_client = run_psi_analytics(client_inputs, client_context, payload_a, dummy_payload);
     });
     std::thread server_thread([&]() {
-      psi_server = run_psi_analyticsAB(server_inputs, server_context, dummy_payload, payload_b);
+      psi_server = run_psi_analytics(server_inputs, server_context, dummy_payload, payload_b);
     });
 
     client_thread.join();
@@ -413,10 +413,10 @@ void PsiAnalyticsPayloadABSumGTTest(ENCRYPTO::PsiAnalyticsContext client_context
   // should return 0 as payload intersection sum is < threshold
   {
     std::thread client_thread([&]() {
-      psi_client = run_psi_analyticsAB(client_inputs, client_context, payload_a, dummy_payload);
+      psi_client = run_psi_analytics(client_inputs, client_context, payload_a, dummy_payload);
     });
     std::thread server_thread([&]() {
-      psi_server = run_psi_analyticsAB(server_inputs, server_context, dummy_payload, payload_b);
+      psi_server = run_psi_analytics(server_inputs, server_context, dummy_payload, payload_b);
     });
 
     client_thread.join();
@@ -449,10 +449,10 @@ void PsiAnalyticsPayloadABMulSumTest(ENCRYPTO::PsiAnalyticsContext client_contex
 
   {
     std::thread client_thread([&]() {
-      psi_client = run_psi_analyticsAB(client_inputs, client_context, payload_a, dummy_payload);
+      psi_client = run_psi_analytics(client_inputs, client_context, payload_a, dummy_payload);
     });
     std::thread server_thread([&]() {
-      psi_server = run_psi_analyticsAB(server_inputs, server_context, dummy_payload, payload_b);
+      psi_server = run_psi_analytics(server_inputs, server_context, dummy_payload, payload_b);
     });
 
     client_thread.join();
@@ -487,10 +487,10 @@ void PsiAnalyticsPayloadABMulSumGTTest(ENCRYPTO::PsiAnalyticsContext client_cont
 
   {
     std::thread client_thread([&]() {
-      psi_client = run_psi_analyticsAB(client_inputs, client_context, payload_a, dummy_payload);
+      psi_client = run_psi_analytics(client_inputs, client_context, payload_a, dummy_payload);
     });
     std::thread server_thread([&]() {
-      psi_server = run_psi_analyticsAB(server_inputs, server_context, dummy_payload, payload_b);
+      psi_server = run_psi_analytics(server_inputs, server_context, dummy_payload, payload_b);
     });
 
     client_thread.join();
@@ -505,10 +505,10 @@ void PsiAnalyticsPayloadABMulSumGTTest(ENCRYPTO::PsiAnalyticsContext client_cont
   // should return 0 as payload intersection sum is < threshold
   {
     std::thread client_thread([&]() {
-      psi_client = run_psi_analyticsAB(client_inputs, client_context, payload_a, dummy_payload);
+      psi_client = run_psi_analytics(client_inputs, client_context, payload_a, dummy_payload);
     });
     std::thread server_thread([&]() {
-      psi_server = run_psi_analyticsAB(server_inputs, server_context, dummy_payload, payload_b);
+      psi_server = run_psi_analytics(server_inputs, server_context, dummy_payload, payload_b);
     });
 
     client_thread.join();

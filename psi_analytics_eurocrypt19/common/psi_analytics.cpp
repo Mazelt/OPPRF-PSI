@@ -55,11 +55,37 @@ using duration_millis = std::chrono::duration<double, milliseconds_ratio>;
 
 uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context) {
   std::vector<std::uint64_t> payload_a_dummy;
-  return run_psi_analytics(inputs, context, payload_a_dummy);
+  std::vector<std::uint64_t> payload_b_dummy;
+  return run_psi_analytics(inputs, context, payload_a_dummy, payload_b_dummy);
 }
 
 uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
                            const std::vector<std::uint64_t> &payload_input_a) {
+  std::vector<std::uint64_t> payload_b_dummy;
+  return run_psi_analytics(inputs, context, payload_input_a, payload_b_dummy);
+}
+
+uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
+                           const std::vector<std::uint64_t> &payload_input_a,
+                           const std::vector<std::uint64_t> &payload_input_b) {
+  auto psi_type = context.analytics_type;
+  bool standard_if = (psi_type == ENCRYPTO::PsiAnalyticsContext::THRESHOLD ||
+                      psi_type == ENCRYPTO::PsiAnalyticsContext::SUM ||
+                      psi_type == ENCRYPTO::PsiAnalyticsContext::SUM_IF_GT_THRESHOLD);
+  bool payload_b_if = (psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM ||
+                       psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM_GT ||
+                       psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM ||
+                       psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM_GT);
+  bool payload_a_if = (payload_b_if || psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM ||
+                       psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM_GT);
+  bool gt_if = (psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM_GT ||
+                psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM_GT ||
+                psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM_GT);
+
+  if (payload_b_if) {
+    return run_psi_analyticsAB(inputs, context, payload_input_a, payload_input_b);
+  }
+
   // establish network connection
   std::unique_ptr<CSocket> sock =
       EstablishConnection(context.address, context.port, static_cast<e_role>(context.role));
@@ -74,8 +100,7 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   if (context.role == CLIENT) {
     std::vector<std::pair<uint64_t, uint64_t>> bins_index;
     bins_index = OpprgPsiClient(inputs, context);
-    if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM ||
-        context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM_GT) {
+    if (payload_a_if) {
       payload_a_index.reserve(bins_index.size());
       for (auto i = 0ull; i < bins_index.size(); ++i) {
         bins.push_back(bins_index[i].first);
@@ -86,7 +111,6 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
         bins.push_back(bins_index[i].first);
       }
     }
-
   } else {
     bins = OpprgPsiServer(inputs, context);
   }
@@ -97,16 +121,23 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   party.ConnectAndBaseOTs();
   auto bc = dynamic_cast<BooleanCircuit *>(
       party.GetSharings().at(S_BOOL)->GetCircuitBuildRoutine());  // GMW circuit
-  // does moving these initiations to the if branches where they are needed make
-  // any difference?
   auto ac = dynamic_cast<ArithmeticCircuit *>(
       party.GetSharings().at(S_ARITH)->GetCircuitBuildRoutine());  // ARITH circuit
   auto yc = dynamic_cast<BooleanCircuit *>(
       party.GetSharings().at(S_YAO)->GetCircuitBuildRoutine());  // YAO circuit.
   assert(bc);
   assert(ac);
+  assert(yc);
 
+  // CIRCUIT setup
   share_ptr s_in_server, s_in_client;
+  share_ptr s_out;
+  auto t_bitlen = static_cast<std::size_t>(std::ceil(std::log2(context.threshold)));
+  auto s_threshold = share_ptr(bc->PutCONSGate(context.threshold, t_bitlen));
+  auto s_threshold_yao = share_ptr(yc->PutCONSGate(context.threshold, t_bitlen));
+  std::uint64_t const_zero = 0;
+  auto s_zero = share_ptr(bc->PutCONSGate(const_zero, 1));
+  auto s_zero_yao = share_ptr(yc->PutCONSGate(const_zero, 1));
 
   // share inputs in ABY
   if (context.role == SERVER) {
@@ -117,55 +148,30 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
     s_in_client = share_ptr(bc->PutSIMDINGate(bins.size(), bins.data(), context.maxbitlen, CLIENT));
   }
 
-  // compare outputs of OPPRFs for each bin in ABY (using SIMD)
   auto s_eq = share_ptr(bc->PutEQGate(s_in_server.get(), s_in_client.get()));
-  // bin_result might just be for debugging. not used anywhere else right now.
-  // std::vector<share_ptr> bin_results;
-  // for (uint32_t i = 0; i < bins.size(); ++i) {
-  //   uint32_t pos[] = {i};
-  //   // subset gate to get pos({i}) of simd input at bin_results.at(i)
-  //   bin_results.emplace_back(bc->PutSubsetGate(s_eq.get(), pos, 1));
-  //   // output eq result share at bin_results.at(i) for both roles
-  //   bin_results.at(i) = share_ptr(bc->PutOUTGate(bin_results.at(i).get(), ALL));
-  // }
 
-  share_ptr s_out;
-  auto t_bitlen = static_cast<std::size_t>(std::ceil(std::log2(context.threshold)));
-  // constant gate with threshold as value
-  auto s_threshold = share_ptr(bc->PutCONSGate(context.threshold, t_bitlen));
-  auto s_threshold_yao = share_ptr(yc->PutCONSGate(context.threshold, t_bitlen));
-  std::uint64_t const_zero = 0;
-  auto s_zero = share_ptr(bc->PutCONSGate(const_zero, 1));
-  auto s_zero_yao = share_ptr(yc->PutCONSGate(const_zero, 1));
-  std::uint64_t const_two = 2;
-  auto s_two_ac = share_ptr(ac->PutCONSGate(const_two, 2));
-
-  if (context.analytics_type == PsiAnalyticsContext::NONE) {
+  if (psi_type == PsiAnalyticsContext::NONE) {
     // we want to only do benchmarking, so no additional operations
-  } else if (context.analytics_type == PsiAnalyticsContext::THRESHOLD) {
+  } else if (psi_type == PsiAnalyticsContext::THRESHOLD) {
     // split up the simd s_eq result
-    auto s_eq_rotated = share_ptr(bc->PutSplitterGate(s_eq.get()));
     // hamming weight, sum of ones in the input
-    s_out = share_ptr(bc->PutHammingWeightGate(s_eq_rotated.get()));
     // greater than gate (compare with threshold)
-    s_out = share_ptr(bc->PutGTGate(s_out.get(), s_threshold.get()));
-  } else if (context.analytics_type == PsiAnalyticsContext::SUM) {
-    // same as threshold but without the GT output.
-
     auto s_eq_rotated = share_ptr(bc->PutSplitterGate(s_eq.get()));
     s_out = share_ptr(bc->PutHammingWeightGate(s_eq_rotated.get()));
-  } else if (context.analytics_type == PsiAnalyticsContext::SUM_IF_GT_THRESHOLD) {
+    s_out = share_ptr(bc->PutGTGate(s_out.get(), s_threshold.get()));
+  } else if (psi_type == PsiAnalyticsContext::SUM) {
+    // same as threshold but without the GT output.
+    auto s_eq_rotated = share_ptr(bc->PutSplitterGate(s_eq.get()));
+    s_out = share_ptr(bc->PutHammingWeightGate(s_eq_rotated.get()));
+  } else if (psi_type == PsiAnalyticsContext::SUM_IF_GT_THRESHOLD) {
     auto s_eq_rotated = share_ptr(bc->PutSplitterGate(s_eq.get()));
     s_out = share_ptr(bc->PutHammingWeightGate(s_eq_rotated.get()));
     auto s_gt_t = share_ptr(bc->PutGTGate(s_out.get(), s_threshold.get()));
-
     // multiplexer gate for selecting zero or sum output depending on threshold
     // reached GT result.
     s_out = share_ptr(bc->PutMUXGate(s_out.get(), s_zero.get(), s_gt_t.get()));
-  } else if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM ||
-             context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM_GT) {
+  } else if (payload_a_if) {
     share_ptr s_in_payload_a;
-
     // get payload shares from client
     if (context.role == SERVER) {
       s_in_payload_a = share_ptr(bc->PutDummySIMDINGate(bins.size(), context.payload_bitlen));
@@ -181,54 +187,50 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
         std::cerr << "[Error] payload of size " << payload_a.size() << "  " << bins.size()
                   << " problem\n";
       }
-      // std::cout << "payload bucket matchings" << std::endl;
-      // for (auto i = 0ull; i < 100; i++) {
-      //   std::cout << payload_a[i] << std::endl;
-      // }
       s_in_payload_a = share_ptr(
           bc->PutSIMDINGate(payload_a.size(), payload_a.data(), context.payload_bitlen, CLIENT));
     }
 
+    // sum circuit
     if (context.payload_bitlen == 1) {
       s_out = BuildIntersectionSumHamming(s_in_payload_a, s_eq, (BooleanCircuit *)bc);
-      if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM_GT) {
-        s_out = BuildGreaterThan(s_out, s_threshold, s_zero, (BooleanCircuit *)bc);
-      }
     } else {
       s_out =
           BuildIntersectionSum(s_in_payload_a, s_eq, (BooleanCircuit *)bc, (ArithmeticCircuit *)ac);
-      if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM_GT) {
+    }
+    // gt circuit
+    if (gt_if) {
+      if (context.payload_bitlen == 1) {
+        s_out = BuildGreaterThan(s_out, s_threshold, s_zero, (BooleanCircuit *)bc);
+      } else {
         s_out = BuildGreaterThan(s_out, s_threshold_yao, s_zero_yao, (BooleanCircuit *)yc);
       }
     }
-
-    // output gate
   } else {
     throw std::runtime_error("Encountered an unknown analytics type");
   }
 
-  if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM ||
-      context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM_GT) {
-    if (context.payload_bitlen == 1) {
+  if (psi_type != PsiAnalyticsContext::NONE) {
+    if (standard_if) {
       s_out = share_ptr(bc->PutOUTGate(s_out.get(), ALL));
     } else {
-      if (context.analytics_type == PsiAnalyticsContext::PAYLOAD_A_SUM) {
-        s_out = share_ptr(ac->PutOUTGate(s_out.get(), ALL));
+      if (context.payload_bitlen == 1) {
+        s_out = share_ptr(bc->PutOUTGate(s_out.get(), ALL));
       } else {
-        s_out = share_ptr(yc->PutOUTGate(s_out.get(), ALL));
+        if (gt_if) {
+          s_out = share_ptr(yc->PutOUTGate(s_out.get(), ALL));
+        } else {
+          s_out = share_ptr(ac->PutOUTGate(s_out.get(), ALL));
+        }
       }
     }
-
-  } else if (context.analytics_type != PsiAnalyticsContext::NONE) {
-    s_out = share_ptr(bc->PutOUTGate(s_out.get(), ALL));
   }
-
   party.ExecCircuit();
 
   // uint64_t *output;
   // uint32_t vbitlen,vnvals;
   uint64_t output = 0;
-  if (context.analytics_type != PsiAnalyticsContext::NONE) {
+  if (psi_type != PsiAnalyticsContext::NONE) {
     output = s_out->get_clear_value<uint64_t>();
     // s_out->get_clear_value_vec(&output, &vbitlen, &vnvals);
   }
@@ -243,58 +245,6 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   context.timings.total = clock_time_total_duration.count();
 
   return output;
-}
-
-share_ptr BuildIntersectionSumHamming(share_ptr s_payload, share_ptr s_eq, BooleanCircuit *bc) {
-  s_payload = share_ptr(bc->PutANDGate(s_eq.get(), s_payload.get()));
-  auto s_payload_rotated = share_ptr(bc->PutSplitterGate(s_payload.get()));
-  return share_ptr(bc->PutHammingWeightGate(s_payload_rotated.get()));
-}
-
-share_ptr BuildIntersectionSum(share_ptr s_payload, share_ptr s_eq, BooleanCircuit *bc,
-                               ArithmeticCircuit *ac) {
-  std::uint64_t const_zero = 0;
-
-  auto s_zeros = share_ptr(bc->PutSIMDCONSGate(s_payload->get_nvals(), const_zero, 1));
-
-  auto s_payload_mux = share_ptr(bc->PutMUXGate(s_payload.get(), s_zeros.get(), s_eq.get()));
-  auto s_payload_ac = share_ptr(ac->PutB2AGate(s_payload_mux.get()));
-  return BuildSum(s_payload_ac, (ArithmeticCircuit*) ac);
-}
-
-share_ptr BuildSum(share_ptr s_a, ArithmeticCircuit *ac) {
-  auto nvals = s_a->get_nvals();
-  s_a = share_ptr(ac->PutSplitterGate(s_a.get()));
-  for (auto i = 1; i < nvals; i++) {
-    s_a->set_wire_id(
-        0, ac->PutADDGate(
-               s_a->get_wire_id(0),
-               s_a->get_wire_id(i)));  // add gates are free for arithmetic circuits
-  }
-  s_a->set_bitlength(1);  // we only need the result.
-  return s_a;
-}
-
-share_ptr BuildGreaterThan(share_ptr s_in, share_ptr s_threshold, share_ptr s_zero,
-                           BooleanCircuit *circ) {
-  // GT Gate not available for Arithmetic circuit. Conversion A2B needs Yao as a
-  // intermediate step. Since Yao also has GT Gate, we can do it in Yao.
-
-  if (s_in->get_circuit_type() == C_BOOLEAN) {
-    auto s_gt_t = share_ptr(circ->PutGTGate(s_in.get(), s_threshold.get()));
-
-    // multiplexer gate for selecting zero or sum output depending on threshold
-    // reached GT result.
-    return share_ptr(circ->PutMUXGate(s_in.get(), s_zero.get(), s_gt_t.get()));
-  } else {
-    // yao circuit
-    share_ptr s_in_yao = share_ptr(circ->PutA2YGate(s_in.get()));
-    auto s_gt_t = share_ptr(circ->PutGTGate(s_in_yao.get(), s_threshold.get()));
-
-    // multiplexer gate for selecting zero or sum output depending on threshold
-    // reached GT result.
-    return share_ptr(circ->PutMUXGate(s_in_yao.get(), s_zero.get(), s_gt_t.get()));
-  }
 }
 
 // PAYLOAD_AB
@@ -343,14 +293,13 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
   party.ConnectAndBaseOTs();
   auto bc = dynamic_cast<BooleanCircuit *>(
       party.GetSharings().at(S_BOOL)->GetCircuitBuildRoutine());  // GMW circuit
-  // does moving these initiations to the if branches where they are needed make
-  // any difference?
   auto ac = dynamic_cast<ArithmeticCircuit *>(
       party.GetSharings().at(S_ARITH)->GetCircuitBuildRoutine());  // ARITH circuit
   auto yc = dynamic_cast<BooleanCircuit *>(
       party.GetSharings().at(S_YAO)->GetCircuitBuildRoutine());  // YAO circuit.
   assert(bc);
   assert(ac);
+  assert(yc);
 
   share_ptr s_in_server_1, s_in_client_1, s_in_server_2, s_in_client_2, s_in_payload_a;
 
@@ -409,7 +358,7 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
         context.analytics_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM_GT) {
       s_mul_ab = share_ptr(bc->PutMULGate(s_mux_payload_a.get(), s_xor_payload_b.get()));
       auto s_mul_ab_ac = share_ptr(ac->PutB2AGate(s_mul_ab.get()));
-      s_ab_sum = BuildSum(s_mul_ab_ac, (ArithmeticCircuit*)ac);
+      s_ab_sum = BuildSum(s_mul_ab_ac, (ArithmeticCircuit *)ac);
     } else {
       s_a_sum =
           BuildIntersectionSum(s_in_payload_a, s_eq, (BooleanCircuit *)bc, (ArithmeticCircuit *)ac);
@@ -462,6 +411,58 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
 
   return output;
 }
+
+share_ptr BuildIntersectionSumHamming(share_ptr s_payload, share_ptr s_eq, BooleanCircuit *bc) {
+  s_payload = share_ptr(bc->PutANDGate(s_eq.get(), s_payload.get()));
+  auto s_payload_rotated = share_ptr(bc->PutSplitterGate(s_payload.get()));
+  return share_ptr(bc->PutHammingWeightGate(s_payload_rotated.get()));
+}
+
+share_ptr BuildIntersectionSum(share_ptr s_payload, share_ptr s_eq, BooleanCircuit *bc,
+                               ArithmeticCircuit *ac) {
+  std::uint64_t const_zero = 0;
+
+  auto s_zeros = share_ptr(bc->PutSIMDCONSGate(s_payload->get_nvals(), const_zero, 1));
+
+  auto s_payload_mux = share_ptr(bc->PutMUXGate(s_payload.get(), s_zeros.get(), s_eq.get()));
+  auto s_payload_ac = share_ptr(ac->PutB2AGate(s_payload_mux.get()));
+  return BuildSum(s_payload_ac, (ArithmeticCircuit *)ac);
+}
+
+share_ptr BuildSum(share_ptr s_a, ArithmeticCircuit *ac) {
+  auto nvals = s_a->get_nvals();
+  s_a = share_ptr(ac->PutSplitterGate(s_a.get()));
+  for (auto i = 1ull; i < nvals; i++) {
+    s_a->set_wire_id(
+        0, ac->PutADDGate(s_a->get_wire_id(0),
+                          s_a->get_wire_id(i)));  // add gates are free for arithmetic circuits
+  }
+  s_a->set_bitlength(1);  // we only need the result.
+  return s_a;
+}
+
+share_ptr BuildGreaterThan(share_ptr s_in, share_ptr s_threshold, share_ptr s_zero,
+                           BooleanCircuit *circ) {
+  // GT Gate not available for Arithmetic circuit. Conversion A2B needs Yao as a
+  // intermediate step. Since Yao also has GT Gate, we can do it in Yao.
+
+  if (s_in->get_circuit_type() == C_BOOLEAN) {
+    auto s_gt_t = share_ptr(circ->PutGTGate(s_in.get(), s_threshold.get()));
+
+    // multiplexer gate for selecting zero or sum output depending on threshold
+    // reached GT result.
+    return share_ptr(circ->PutMUXGate(s_in.get(), s_zero.get(), s_gt_t.get()));
+  } else {
+    // yao circuit
+    share_ptr s_in_yao = share_ptr(circ->PutA2YGate(s_in.get()));
+    auto s_gt_t = share_ptr(circ->PutGTGate(s_in_yao.get(), s_threshold.get()));
+
+    // multiplexer gate for selecting zero or sum output depending on threshold
+    // reached GT result.
+    return share_ptr(circ->PutMUXGate(s_in_yao.get(), s_zero.get(), s_gt_t.get()));
+  }
+}
+
 
 std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClient(const std::vector<uint64_t> &elements,
                                                           PsiAnalyticsContext &context) {
@@ -540,10 +541,6 @@ std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClient(const std::vector<uint
   for (auto i = 0ull; i < X.size(); ++i) {
     bins_index_result.push_back({X[i].elem ^ Y[i].elem, index_table[i]});
   }
-  // std::cerr << "bin_index_result right after pushback" << std::endl;
-  // for (auto i = 0ull; i < 10; i++) {
-  //   std::cerr << bins_index_result[i].first << " " << bins_index_result[i].second << std::endl;
-  // }
 
   const auto end_time = std::chrono::system_clock::now();
   const duration_millis total_duration = end_time - start_time;
@@ -644,6 +641,7 @@ std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClientAB(const std::vector<ui
   }
 
   auto cuckoo_table_v = cuckoo_table.AsRawVector();
+  index = cuckoo_table.GetIndex();
 
   const auto hashing_end_time_1 = std::chrono::system_clock::now();
   const duration_millis hashing_duration_1 = hashing_end_time_1 - hashing_start_time_1;
@@ -699,18 +697,7 @@ std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClientAB(const std::vector<ui
   const duration_millis eval_poly_duration_1 = eval_poly_end_time_1 - eval_poly_start_time_1;
   context.timings.polynomials = eval_poly_duration_1.count();
 
-  index = cuckoo_table.GetIndex();
-  // std::cerr << index_table[0] << std::endl;
-  // index = index_table
-  // std::cerr << "bin_index_result right after pushback" << std::endl;
-  // for (auto i = 0ull; i < 10; i++) {
-  //   std::cerr << bins_index_result[i].first << " " << bins_index_result[i].second << std::endl;
-  // }
-
-  //////////////////////
-  // OPPRF 2 for payload encryption
-  // can we reuse the masks from phase 1?????/
-  //////////////////////
+  // OPPRF 2 for payload b encryption
 
   const auto oprf_start_time_2 = std::chrono::system_clock::now();
 
@@ -845,10 +832,8 @@ std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiServerAB(
   const duration_millis sending_duration_1 = sending_end_time_1 - sending_start_time_1;
   context.timings.polynomials_transmission = sending_duration_1.count();
 
-  //////////////////////
+
   // OPPRF 2 for payload encryption
-  // can we reuse the masks from phase 1?????/
-  //////////////////////
 
   const auto oprf_start_time_2 = std::chrono::system_clock::now();
 
