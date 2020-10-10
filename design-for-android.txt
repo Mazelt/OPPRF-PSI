@@ -1,13 +1,14 @@
 design-for-android
 
 TODO:
-* Create Contact Tracing UI
+* Implement PSI with associated values.
+* Write test for associated values PSI.
 * Implement Overlap setting
 * Add random associated values
+* Prepare server binary for risk scoring.
 * Make associates values view/editable
 * Compute risk score using PSI-SUM
 * Embed weights into the scoring
-* Prepare server binary for risk scoring.
 * prepare benchmarking (parameter combinations)
 * gather more data: profiler, memory, energy?, time, data.
 
@@ -18,6 +19,8 @@ DONE
 * Tweak UI: disable button after press.
 * Return/view results of execution in app.
 * Enable/Investigate own elements.
+* Create Contact Tracing UI
+* Get SUM output viewable.
 
 Own elements: we should reuse the GeneratePseudoRandom and enable an overlap
 setting. Both client and server use the same seed with an offset that comprises

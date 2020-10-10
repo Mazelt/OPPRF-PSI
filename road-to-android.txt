@@ -1,3 +1,6 @@
+Other todos:
+* Rebase on changes from maintainers. (september updates in cryptotools/libote.)
+
 Questions:
 * strip server code from android library?
 * Build in android studio or not?
