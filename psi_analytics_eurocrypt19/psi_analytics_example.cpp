@@ -40,7 +40,8 @@ auto read_test_options(int32_t argcp, char **argvp) {
   ("polysize,s",     po::value<decltype(context.polynomialsize)>(&context.polynomialsize)->default_value(0u),       "Size of the polynomial(s), default: neles")
   ("functions,f",    po::value<decltype(context.nfuns)>(&context.nfuns)->default_value(2u),                         "Number of hash functions in hash tables")
   ("payload_a_bitlen", po::value<decltype(context.payload_bitlen)>(&context.payload_bitlen)->default_value(2u),  "Bit-length of payload A input")
-  ("type,y",         po::value<std::string>(&type)->default_value("None"),                                          "Function type {None, Threshold, Sum, SumIfGtThreshold, PayloadASum, PayloadASumGT, PayloadABSum, PayloadABSumGT, PayloadABMulSum, PayloadABMulSumGT}");  // clang-format on
+  ("type,y",         po::value<std::string>(&type)->default_value("None"),                                          "Function type {None, Threshold, Sum, SumIfGtThreshold, PayloadASum, PayloadASumGT, PayloadABSum, PayloadABSumGT, PayloadABMulSum, PayloadABMulSumGT}")  // clang-format on
+  ("overlap"        ,po::value<decltype(context.overlap)>(&context.overlap)->default_value(100u),                   "items overlap.");
 
   po::variables_map vm;
   try {
@@ -104,7 +105,10 @@ auto read_test_options(int32_t argcp, char **argvp) {
 int main(int argc, char **argv) {
   auto context = read_test_options(argc, argv);
   auto gen_bitlen = static_cast<std::size_t>(std::ceil(std::log2(context.neles))) + 3;
-  auto inputs = ENCRYPTO::GeneratePseudoRandomElements(context.neles, gen_bitlen);
+  auto offset = std::ceil((double(100- context.overlap)/100.0) * context.notherpartyselems) ;
+  auto inputs = ENCRYPTO::GenerateSequentialElements(context.neles, offset);
+
+
   auto psi_type = context.analytics_type;
 
   bool payload_b_if = (psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM ||

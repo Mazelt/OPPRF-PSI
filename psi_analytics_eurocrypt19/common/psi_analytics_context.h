@@ -40,6 +40,7 @@ struct PsiAnalyticsContext {
   double epsilon;
   std::string address;
   uint64_t payload_bitlen;
+  uint64_t overlap;
 
   enum {
     NONE,                 // only calculate the equality of the bin elements - used for benchmarking
@@ -53,6 +54,7 @@ struct PsiAnalyticsContext {
     PAYLOAD_AB_MUL_SUM,
     PAYLOAD_AB_MUL_SUM_GT
   } analytics_type;
+  
 
   const uint64_t maxbitlen = 61;
 

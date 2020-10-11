@@ -85,6 +85,18 @@ std::vector<uint64_t> GenerateSequentialElements(const std::size_t n) {
   return elements;
 }
 
+std::vector<uint64_t> GenerateSequentialElements(const std::size_t n, const std::size_t offset) {
+  std::vector<uint64_t> elements(n);
+  std::size_t i = offset;
+  std::generate(elements.begin(), elements.end(), [&i]() mutable { return i++; });
+
+  for (auto &e : elements) {
+    e = HashingTable::ElementToHash(e) & __61_bit_mask;
+  }
+
+  return elements;
+}
+
 std::vector<uint64_t> GenerateRandomPayload(const std::size_t n, const std::size_t bitlen,
                                             const std::size_t seed) {
   std::vector<uint64_t> output;
