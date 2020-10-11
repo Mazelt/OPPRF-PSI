@@ -39,8 +39,8 @@ auto read_test_options(int32_t argcp, char **argvp) {
   ("nmegabins,m",    po::value<decltype(context.nmegabins)>(&context.nmegabins)->default_value(1u),                 "Number of mega bins")
   ("polysize,s",     po::value<decltype(context.polynomialsize)>(&context.polynomialsize)->default_value(0u),       "Size of the polynomial(s), default: neles")
   ("functions,f",    po::value<decltype(context.nfuns)>(&context.nfuns)->default_value(2u),                         "Number of hash functions in hash tables")
-  ("type,y",         po::value<std::string>(&type)->default_value("None"),                                          "Function type {None, Threshold, Sum, SumIfGtThreshold}");
-  // clang-format on
+  ("payload_a_bitlen", po::value<decltype(context.payload_bitlen)>(&context.payload_bitlen)->default_value(2u),  "Bit-length of payload A input")
+  ("type,y",         po::value<std::string>(&type)->default_value("None"),                                          "Function type {None, Threshold, Sum, SumIfGtThreshold, PayloadASum, PayloadASumGT, PayloadABSum, PayloadABSumGT, PayloadABMulSum, PayloadABMulSumGT}");  // clang-format on
 
   po::variables_map vm;
   try {
@@ -68,6 +68,18 @@ auto read_test_options(int32_t argcp, char **argvp) {
     context.analytics_type = ENCRYPTO::PsiAnalyticsContext::SUM;
   } else if (type.compare("SumIfGtThreshold") == 0) {
     context.analytics_type = ENCRYPTO::PsiAnalyticsContext::SUM_IF_GT_THRESHOLD;
+  } else if (type.compare("PayloadASum") == 0) {
+    context.analytics_type = ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM;
+  } else if (type.compare("PayloadASumGT") == 0) {
+    context.analytics_type = ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM_GT;
+  } else if (type.compare("PayloadABSum") == 0) {
+    context.analytics_type = ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM;
+  } else if (type.compare("PayloadABSumGT") == 0) {
+    context.analytics_type = ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM_GT;
+  } else if (type.compare("PayloadABMulSum") == 0) {
+    context.analytics_type = ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM;
+  } else if (type.compare("PayloadABMulSumGT") == 0) {
+    context.analytics_type = ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM_GT;
   } else {
     std::string error_msg(std::string("Unknown function type: " + type));
     throw std::runtime_error(error_msg.c_str());
@@ -93,8 +105,25 @@ int main(int argc, char **argv) {
   auto context = read_test_options(argc, argv);
   auto gen_bitlen = static_cast<std::size_t>(std::ceil(std::log2(context.neles))) + 3;
   auto inputs = ENCRYPTO::GeneratePseudoRandomElements(context.neles, gen_bitlen);
-  ENCRYPTO::run_psi_analytics(inputs, context);
-  std::cout << "PSI circuit successfully executed" << std::endl;
+  auto psi_type = context.analytics_type;
+
+  bool payload_b_if = (psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM ||
+                       psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_SUM_GT ||
+                       psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM ||
+                       psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_AB_MUL_SUM_GT);
+  bool payload_a_if = (payload_b_if || psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM ||
+                       psi_type == ENCRYPTO::PsiAnalyticsContext::PAYLOAD_A_SUM_GT);
+
+  std::vector<uint64_t> payload_a, payload_b;
+
+  if (context.role == CLIENT && payload_a_if) {
+    payload_a = ENCRYPTO::GenerateRandomPayload(context.neles, context.payload_bitlen, CLIENT);
+  } else if (context.role == SERVER && payload_b_if) {
+    payload_b = ENCRYPTO::GenerateRandomPayload(context.neles, context.payload_bitlen, SERVER);
+  }
+  auto out = ENCRYPTO::run_psi_analytics(inputs, context, payload_a, payload_b);
+
+  std::cout << "PSI circuit successfully executed. Result: " << out << std::endl;
   PrintTimings(context);
   return EXIT_SUCCESS;
 }

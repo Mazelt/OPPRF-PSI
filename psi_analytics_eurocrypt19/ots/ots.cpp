@@ -46,7 +46,7 @@ std::vector<std::uint64_t> ot_receiver(const std::vector<std::uint64_t> &inputs,
   outputs.reserve(inputs.size());
   std::size_t numOTs = inputs.size();
   // osuCrypto::PRNG prng(_mm_set_epi32(4253233465, 334565, 0, 235));
-  osuCrypto::PRNG prng(osuCrypto::block(18267498634428095205,235));
+  osuCrypto::PRNG prng(osuCrypto::block(18267498634428095205, 235));
 
   osuCrypto::KkrtNcoOtReceiver recv;
 

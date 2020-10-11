@@ -24,6 +24,8 @@
 
 #include "abycore/aby/abyparty.h"
 #include "abycore/circuit/share.h"
+#include "abycore/sharing/arithsharing.h"
+#include "abycore/sharing/boolsharing.h"
 #include "helpers.h"
 #include "psi_analytics_context.h"
 
@@ -33,20 +35,54 @@ namespace ENCRYPTO {
 
 uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context);
 
-std::vector<uint64_t> OpprgPsiClient(const std::vector<uint64_t> &elements,
-                                     PsiAnalyticsContext &context);
+uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
+                           const std::vector<std::uint64_t> &payload_input_a);
+
+uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
+                             const std::vector<std::uint64_t> &payload_input_a,
+                             const std::vector<std::uint64_t> &payload_input_b);
+
+uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
+                             const std::vector<std::uint64_t> &payload_input_a,
+                             const std::vector<std::uint64_t> &payload_input_b);
+
+std::shared_ptr<share> BuildIntersectionSumHamming(std::shared_ptr<share> s_payload,
+                                                   std::shared_ptr<share> s_eq, BooleanCircuit *bc);
+std::shared_ptr<share> BuildIntersectionSum(std::shared_ptr<share> s_payload,
+                                            std::shared_ptr<share> s_eq, BooleanCircuit *bc,
+                                            ArithmeticCircuit *ac);
+std::shared_ptr<share> BuildGreaterThan(std::shared_ptr<share> s_in,
+                                        std::shared_ptr<share> s_threshold,
+                                        std::shared_ptr<share> s_zero, BooleanCircuit *circ);
+std::shared_ptr<share> BuildSum(std::shared_ptr<share> s_a, ArithmeticCircuit *ac);
+
+std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClient(const std::vector<uint64_t> &elements,
+                                                          PsiAnalyticsContext &context);
 
 std::vector<uint64_t> OpprgPsiServer(const std::vector<uint64_t> &elements,
                                      PsiAnalyticsContext &context);
+
+std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClientAB(const std::vector<uint64_t> &elements,
+                                                            PsiAnalyticsContext &context,
+                                                            std::vector<uint64_t> &index);
+
+std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiServerAB(
+    const std::vector<uint64_t> &elements, PsiAnalyticsContext &context,
+    const std::vector<std::uint64_t> &payload_input_b);
 
 void InterpolatePolynomials(std::vector<uint64_t> &polynomials,
                             std::vector<uint64_t> &content_of_bins,
                             const std::vector<std::vector<uint64_t>> &masks,
                             PsiAnalyticsContext &context);
 
+void InterpolatePolynomials(std::vector<uint64_t> &polynomials,
+                            std::vector<std::vector<uint64_t>> &contents_of_bins,
+                            const std::vector<std::vector<uint64_t>> &masks,
+                            PsiAnalyticsContext &context);
+
 void InterpolatePolynomialsPaddedWithDummies(
     std::vector<uint64_t>::iterator polynomial_offset,
-    std::vector<uint64_t>::const_iterator random_value_in_bin,
+    std::vector<std::vector<uint64_t>>::const_iterator random_value_in_bin,
     std::vector<std::vector<uint64_t>>::const_iterator masks_for_elems_in_bin,
     std::size_t nbins_in_megabin, PsiAnalyticsContext &context);
 
@@ -56,4 +92,4 @@ std::unique_ptr<CSocket> EstablishConnection(const std::string &address, uint16_
 std::size_t PlainIntersectionSize(std::vector<std::uint64_t> v1, std::vector<std::uint64_t> v2);
 
 void PrintTimings(const PsiAnalyticsContext &context);
-}
+}  // namespace ENCRYPTO
