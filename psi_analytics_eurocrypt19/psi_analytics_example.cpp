@@ -129,5 +129,6 @@ int main(int argc, char **argv) {
 
   std::cout << "PSI circuit successfully executed. Result: " << out << std::endl;
   PrintTimings(context);
+  PrintComm(context);
   return EXIT_SUCCESS;
 }

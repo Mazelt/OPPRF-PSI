@@ -239,6 +239,14 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
   context.timings.aby_online = party.GetTiming(P_ONLINE);
   context.timings.aby_total = context.timings.aby_setup + context.timings.aby_online;
   context.timings.base_ots_aby = party.GetTiming(P_BASE_OT);
+  context.comm.aby_setup_recv = party.GetReceivedData(P_SETUP);
+  context.comm.aby_online_recv = party.GetReceivedData(P_ONLINE);
+  context.comm.base_ots_aby_recv = party.GetReceivedData(P_BASE_OT);
+  context.comm.aby_total_recv = party.GetReceivedData(P_TOTAL);
+  context.comm.aby_setup_sent = party.GetSentData(P_SETUP);
+  context.comm.aby_online_sent = party.GetSentData(P_ONLINE);
+  context.comm.base_ots_aby_sent = party.GetSentData(P_BASE_OT);
+  context.comm.aby_total_sent = party.GetSentData(P_TOTAL);
 
   const auto clock_time_total_end = std::chrono::system_clock::now();
   const duration_millis clock_time_total_duration = clock_time_total_end - clock_time_total_start;
@@ -404,6 +412,14 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
   context.timings.aby_online = party.GetTiming(P_ONLINE);
   context.timings.aby_total = context.timings.aby_setup + context.timings.aby_online;
   context.timings.base_ots_aby = party.GetTiming(P_BASE_OT);
+  context.comm.aby_setup_recv = party.GetReceivedData(P_SETUP);
+  context.comm.aby_online_recv = party.GetReceivedData(P_ONLINE);
+  context.comm.base_ots_aby_recv = party.GetReceivedData(P_BASE_OT);
+  context.comm.aby_total_recv = party.GetReceivedData(P_TOTAL);
+  context.comm.aby_setup_sent = party.GetSentData(P_SETUP);
+  context.comm.aby_online_sent = party.GetSentData(P_ONLINE);
+  context.comm.base_ots_aby_sent = party.GetSentData(P_BASE_OT);
+  context.comm.aby_total_sent = party.GetSentData(P_TOTAL);
 
   const auto clock_time_total_end = std::chrono::system_clock::now();
   const duration_millis clock_time_total_duration = clock_time_total_end - clock_time_total_start;
@@ -514,6 +530,9 @@ std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClient(const std::vector<uint
   sock->Receive(poly_rcv_buffer.data(), context.nmegabins * context.polynomialbytelength);
   sock->Close();
 
+  context.comm.polynomials_transmission_recv = sock->getRcvCnt();
+  context.comm.polynomials_transmission_sent = sock->getSndCnt();
+
   const auto receiving_end_time = std::chrono::system_clock::now();
   const duration_millis sending_duration = receiving_end_time - receiving_start_time;
   context.timings.polynomials_transmission = sending_duration.count();
@@ -615,6 +634,9 @@ std::vector<uint64_t> OpprgPsiServer(const std::vector<uint64_t> &elements,
   sock->Send((uint8_t *)polynomials.data(), context.nmegabins * context.polynomialbytelength);
   sock->Close();
 
+  context.comm.polynomials_transmission_recv = sock->getRcvCnt();
+  context.comm.polynomials_transmission_sent = sock->getSndCnt();
+
   const auto sending_end_time = std::chrono::system_clock::now();
   const duration_millis sending_duration = sending_end_time - sending_start_time;
   context.timings.polynomials_transmission = sending_duration.count();
@@ -675,6 +697,7 @@ std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClientAB(const std::vector<ui
 
   sock->Receive(poly_rcv_buffer.data(), context.nmegabins * context.polynomialbytelength);
   // sock->Close();
+  // counting communication data after second oprf
 
   const auto receiving_end_time_1 = std::chrono::system_clock::now();
   const duration_millis sending_duration_1 = receiving_end_time_1 - receiving_start_time_1;
@@ -724,6 +747,9 @@ std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiClientAB(const std::vector<ui
 
   sock->Receive(poly_rcv_buffer_2.data(), context.nmegabins * context.polynomialbytelength);
   sock->Close();
+
+  context.comm.polynomials_transmission_recv = sock->getRcvCnt();
+  context.comm.polynomials_transmission_sent = sock->getSndCnt();
 
   const auto receiving_end_time_2 = std::chrono::system_clock::now();
   const duration_millis sending_duration_2 = receiving_end_time_2 - receiving_start_time_2;
@@ -887,6 +913,9 @@ std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiServerAB(
   sock->Send((uint8_t *)polynomials2.data(), context.nmegabins * context.polynomialbytelength);
   sock->Close();
 
+  context.comm.polynomials_transmission_recv = sock->getRcvCnt();
+  context.comm.polynomials_transmission_sent = sock->getSndCnt();
+
   const auto sending_end_time_2 = std::chrono::system_clock::now();
   const duration_millis sending_duration_2 = sending_end_time_2 - sending_start_time_2;
   context.timings.polynomials_transmission += sending_duration_2.count();
@@ -1038,6 +1067,26 @@ void PrintTimings(const PsiAnalyticsContext &context) {
             << context.timings.total - context.timings.base_ots_aby -
                    context.timings.base_ots_libote
             << "ms\n";
+}
+
+void PrintComm(const PsiAnalyticsContext &context) {
+  std::cout << "Data for polynomials recv/sent " << context.comm.polynomials_transmission_recv
+            << " / " << context.comm.polynomials_transmission_sent << " b\n";
+  std::cout << "Data for oprf recv/sent " << context.comm.oprf_recv << " / " << context.comm.oprf_sent << " b\n";
+  
+  std::cout << "ABY recv: online " << context.comm.aby_online_recv << " bytes, setup "
+            << context.comm.aby_setup_recv << " bytes, total " << context.comm.aby_total_recv
+            << " bytes\n";
+  std::cout << "ABY sent: online " << context.comm.aby_online_sent << " bytes, setup "
+            << context.comm.aby_setup_sent << " bytes, total " << context.comm.aby_total_sent
+            << " bytes\n";
+  auto total_recv =
+      context.comm.polynomials_transmission_recv + context.comm.aby_total_recv + context.comm.oprf_recv;
+  auto total_sent = context.comm.polynomials_transmission_sent + context.comm.aby_total_sent + context.comm.oprf_sent;
+  std::cout << "Total recv: " << total_recv << " bytes\n";
+  std::cout << "Total sent: " << total_sent << " bytes\n";
+  std::cout << "Total recv w/o base OTs: " << total_recv - context.comm.base_ots_aby_recv - context.comm.base_ots_libote_recv << " b\n";
+  std::cout << "Total sent w/o base OTs: " << total_sent - context.comm.base_ots_aby_sent - context.comm.base_ots_libote_sent << " b\n";
 }
 
 }  // namespace ENCRYPTO
