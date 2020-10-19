@@ -31,6 +31,7 @@ std::vector<uint64_t> GeneratePseudoRandomElements(const std::size_t n, const st
                                                    const std::size_t seed = 12345);
 
 std::vector<uint64_t> GenerateSequentialElements(const std::size_t n);
+std::vector<uint64_t> GenerateSequentialElements(const std::size_t n, const std::size_t offset);
 
 std::vector<uint64_t> GenerateRandomPayload(const std::size_t n, const std::size_t bitlen,
                                             const std::size_t seed);

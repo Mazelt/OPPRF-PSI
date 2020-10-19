@@ -77,6 +77,8 @@ std::vector<std::uint64_t> ot_receiver(const std::vector<std::uint64_t> &inputs,
   const auto baseots_end_time = std::chrono::system_clock::now();
   const duration_millis baseOTs_duration = baseots_end_time - baseots_start_time;
   context.timings.base_ots_libote = baseOTs_duration.count();
+  context.comm.base_ots_libote_recv = recvChl.getTotalDataRecv();
+  context.comm.base_ots_libote_sent = recvChl.getTotalDataSent();
 
   const auto OPRF_start_time = std::chrono::system_clock::now();
   recv.init(numOTs, prng, recvChl);
@@ -103,6 +105,8 @@ std::vector<std::uint64_t> ot_receiver(const std::vector<std::uint64_t> &inputs,
   context.timings.oprf = OPRF_duration.count();
 
   recvChl.close();
+  context.comm.oprf_recv = recvChl.getTotalDataRecv();
+  context.comm.oprf_sent = recvChl.getTotalDataSent();
   ep.stop();
   ios.stop();
 
@@ -145,6 +149,8 @@ std::vector<std::vector<std::uint64_t>> ot_sender(
   const auto baseots_end_time = std::chrono::system_clock::now();
   const duration_millis baseOTs_duration = baseots_end_time - baseots_start_time;
   context.timings.base_ots_libote = baseOTs_duration.count();
+  context.comm.base_ots_libote_recv = sendChl.getTotalDataRecv();
+  context.comm.base_ots_libote_sent = sendChl.getTotalDataSent();
 
   const auto OPRF_start_time = std::chrono::system_clock::now();
   sender.init(numOTs, prng, sendChl);
@@ -176,6 +182,8 @@ std::vector<std::vector<std::uint64_t>> ot_sender(
   context.timings.oprf = OPRF_duration.count();
 
   sendChl.close();
+  context.comm.oprf_recv = sendChl.getTotalDataRecv();
+  context.comm.oprf_sent = sendChl.getTotalDataSent();
   ep.stop();
   ios.stop();
   return outputs;

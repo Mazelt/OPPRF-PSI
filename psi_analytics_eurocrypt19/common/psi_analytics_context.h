@@ -41,6 +41,7 @@ struct PsiAnalyticsContext {
   std::string address;
   uint64_t payload_bitlen;
 
+
   enum {
     NONE,                 // only calculate the equality of the bin elements - used for benchmarking
     THRESHOLD,            // 1 if T > PSI, 0 otherwise
@@ -53,6 +54,8 @@ struct PsiAnalyticsContext {
     PAYLOAD_AB_MUL_SUM,
     PAYLOAD_AB_MUL_SUM_GT
   } analytics_type;
+  
+  uint64_t overlap;
 
   const uint64_t maxbitlen = 61;
 
@@ -69,6 +72,23 @@ struct PsiAnalyticsContext {
     double aby_total;
     double total;
   } timings;
+
+  struct {
+    uint64_t polynomials_transmission_recv;
+    uint64_t polynomials_transmission_sent;
+    uint64_t base_ots_libote_recv;
+    uint64_t base_ots_libote_sent;
+    uint64_t oprf_recv;
+    uint64_t oprf_sent;
+    uint64_t aby_setup_recv;
+    uint64_t aby_online_recv;
+    uint64_t base_ots_aby_recv;
+    uint64_t aby_total_recv;
+    uint64_t aby_setup_sent;
+    uint64_t aby_online_sent;
+    uint64_t base_ots_aby_sent;
+    uint64_t aby_total_sent;
+  } comm;
 };
 
 }

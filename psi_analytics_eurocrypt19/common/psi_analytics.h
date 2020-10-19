@@ -92,4 +92,5 @@ std::unique_ptr<CSocket> EstablishConnection(const std::string &address, uint16_
 std::size_t PlainIntersectionSize(std::vector<std::uint64_t> v1, std::vector<std::uint64_t> v2);
 
 void PrintTimings(const PsiAnalyticsContext &context);
+void PrintComm(const PsiAnalyticsContext &context);
 }  // namespace ENCRYPTO
