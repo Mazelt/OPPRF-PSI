@@ -970,23 +970,23 @@ TEST(PSI_ANALYTICS, pow_2_16_probably_all_different) {
   }
 }
 
-// TEST(PSI_ANALYTICS, pow_2_20_all_equal) {
-//   for (auto i = 0ull; i < ITERATIONS; ++i) {
-//     PsiAnalyticsTest(61, false, NELES_2_20, POLYNOMIALSIZE_2_20, NMEGABINS_2_20);
-//   }
-// }
+TEST(PSI_ANALYTICS, pow_2_20_all_equal) {
+  for (auto i = 0ull; i < ITERATIONS; ++i) {
+    PsiAnalyticsTest(61, false, NELES_2_20, POLYNOMIALSIZE_2_20, NMEGABINS_2_20);
+  }
+}
 
-// TEST(PSI_ANALYTICS, pow_2_20_random) {
-//   for (auto i = 0ull; i < ITERATIONS; ++i) {
-//     PsiAnalyticsTest(23, true, NELES_2_20, POLYNOMIALSIZE_2_20, NMEGABINS_2_20);
-//   }
-// }
+TEST(PSI_ANALYTICS, pow_2_20_random) {
+  for (auto i = 0ull; i < ITERATIONS; ++i) {
+    PsiAnalyticsTest(23, true, NELES_2_20, POLYNOMIALSIZE_2_20, NMEGABINS_2_20);
+  }
+}
 
-// TEST(PSI_ANALYTICS, pow_2_20_probably_all_different) {
-//   for (auto i = 0ull; i < ITERATIONS; ++i) {
-//     PsiAnalyticsTest(61, true, NELES_2_20, POLYNOMIALSIZE_2_20, NMEGABINS_2_20);
-//   }
-// }
+TEST(PSI_ANALYTICS, pow_2_20_probably_all_different) {
+  for (auto i = 0ull; i < ITERATIONS; ++i) {
+    PsiAnalyticsTest(61, true, NELES_2_20, POLYNOMIALSIZE_2_20, NMEGABINS_2_20);
+  }
+}
 
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
