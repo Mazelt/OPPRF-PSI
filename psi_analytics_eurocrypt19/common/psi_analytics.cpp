@@ -1035,6 +1035,10 @@ std::unique_ptr<CSocket> EstablishConnection(const std::string &address, uint16_
     socket = Listen(address.c_str(), port);
   } else {
     socket = Connect(address.c_str(), port);
+    if (socket == nullptr) {
+      std::cerr << "Retrying connect one more time" << std::endl;
+      socket = Connect(address.c_str(), port);
+    }
   }
   assert(socket);
   return socket;

@@ -80,7 +80,6 @@ std::vector<std::uint64_t> ot_receiver(const std::vector<std::uint64_t> &inputs,
   context.comm.base_ots_libote_recv = recvChl.getTotalDataRecv();
   context.comm.base_ots_libote_sent = recvChl.getTotalDataSent();
 
-  const auto OPRF_start_time = std::chrono::system_clock::now();
   recv.init(numOTs, prng, recvChl);
 
   std::vector<osuCrypto::block> blocks(numOTs), receiver_encoding(numOTs);
@@ -100,9 +99,6 @@ std::vector<std::uint64_t> ot_receiver(const std::vector<std::uint64_t> &inputs,
     // copy only part of the encoding
     outputs.push_back(reinterpret_cast<uint64_t *>(&receiver_encoding.at(k))[0] &= __61_bit_mask);
   }
-  const auto OPRF_end_time = std::chrono::system_clock::now();
-  const duration_millis OPRF_duration = OPRF_end_time - OPRF_start_time;
-  context.timings.oprf = OPRF_duration.count();
 
   recvChl.close();
   context.comm.oprf_recv = recvChl.getTotalDataRecv();
@@ -152,7 +148,6 @@ std::vector<std::vector<std::uint64_t>> ot_sender(
   context.comm.base_ots_libote_recv = sendChl.getTotalDataRecv();
   context.comm.base_ots_libote_sent = sendChl.getTotalDataSent();
 
-  const auto OPRF_start_time = std::chrono::system_clock::now();
   sender.init(numOTs, prng, sendChl);
 
   std::vector<std::vector<osuCrypto::block>> inputs_as_blocks(numOTs), outputs_as_blocks(numOTs);
@@ -176,10 +171,6 @@ std::vector<std::vector<std::uint64_t>> ot_sender(
       outputs.at(i).push_back(reinterpret_cast<uint64_t *>(&encoding)[0] &= __61_bit_mask);
     }
   }
-
-  const auto OPRF_end_time = std::chrono::system_clock::now();
-  const duration_millis OPRF_duration = OPRF_end_time - OPRF_start_time;
-  context.timings.oprf = OPRF_duration.count();
 
   sendChl.close();
   context.comm.oprf_recv = sendChl.getTotalDataRecv();
