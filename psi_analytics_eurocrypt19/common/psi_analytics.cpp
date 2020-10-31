@@ -579,7 +579,6 @@ std::vector<uint64_t> OpprgPsiServer(const std::vector<uint64_t> &elements,
   simple_table.SetNumOfHashFunctions(context.nfuns);
   simple_table.Insert(elements);
   simple_table.MapElements();
-  // simple_table.Print();
 
   auto simple_table_v = simple_table.AsRaw2DVector();
   // context.simple_table = simple_table_v;
@@ -604,7 +603,6 @@ std::vector<uint64_t> OpprgPsiServer(const std::vector<uint64_t> &elements,
   // Hints are a polynomial interpolated on the (element, oprf-result XOR tj) pairs.
   std::vector<uint64_t> polynomials(context.nmegabins * context.polynomialsize, 0);
   std::vector<uint64_t> content_of_bins(context.nbins);
-
   std::random_device urandom("/dev/urandom");
   std::uniform_int_distribution<uint64_t> dist(0,
                                                (1ull << context.maxbitlen) - 1);  // [0,2^elebitlen)
@@ -951,6 +949,7 @@ void InterpolatePolynomials(std::vector<uint64_t> &polynomials,
   std::size_t masks_offset = 0;
   std::size_t nbinsinmegabin = ceil_divide(nbins, context.nmegabins);
 
+
   for (auto mega_bin_i = 0ull; mega_bin_i < context.nmegabins; ++mega_bin_i) {
     auto polynomial = polynomials.begin() + context.polynomialsize * mega_bin_i;
     auto bin = contents_of_bins.begin() + nbinsinmegabin * mega_bin_i;
@@ -1064,7 +1063,7 @@ void PrintTimings(const PsiAnalyticsContext &context) {
 
   std::cout << "ABY timings: online time " << context.timings.aby_online << " ms, setup time "
             << context.timings.aby_setup << " ms, total time " << context.timings.aby_total
-            << " ms\n";
+            << " ms, base OTs time " << context.timings.base_ots_aby <<  " ms\n";
 
   std::cout << "Total runtime: " << context.timings.total << "ms\n";
   std::cout << "Total runtime w/o base OTs: "
@@ -1080,10 +1079,10 @@ void PrintComm(const PsiAnalyticsContext &context) {
   
   std::cout << "ABY recv: online " << context.comm.aby_online_recv << " bytes, setup "
             << context.comm.aby_setup_recv << " bytes, total " << context.comm.aby_total_recv
-            << " bytes\n";
+            << " bytes, base OTs " << context.comm.base_ots_aby_recv << " bytes\n";
   std::cout << "ABY sent: online " << context.comm.aby_online_sent << " bytes, setup "
             << context.comm.aby_setup_sent << " bytes, total " << context.comm.aby_total_sent
-            << " bytes\n";
+            << " bytes, base OTs " << context.comm.base_ots_aby_sent << " bytes\n";
   auto total_recv =
       context.comm.polynomials_transmission_recv + context.comm.aby_total_recv + context.comm.oprf_recv;
   auto total_sent = context.comm.polynomials_transmission_sent + context.comm.aby_total_sent + context.comm.oprf_sent;
