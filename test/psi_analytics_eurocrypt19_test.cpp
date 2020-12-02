@@ -536,8 +536,8 @@ void PsiAnalyticsUnbalancedTest(ENCRYPTO::PsiAnalyticsContext client_context,
 
   auto plain_intersection_size = ENCRYPTO::PlainIntersectionSize(client_inputs, server_inputs);
 
-  ASSERT_EQ(psi_client, plain_intersection_size);
   ASSERT_EQ(psi_server, plain_intersection_size);
+  ASSERT_EQ(psi_client, plain_intersection_size);
 }
 
 void PsiAnalyticsTest(std::size_t elem_bitlen, bool random, uint64_t neles, uint64_t polynomialsize,
