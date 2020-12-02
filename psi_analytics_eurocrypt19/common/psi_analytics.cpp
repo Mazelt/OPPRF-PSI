@@ -68,6 +68,9 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
 uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalyticsContext &context,
                            const std::vector<std::uint64_t> &payload_input_a,
                            const std::vector<std::uint64_t> &payload_input_b) {
+  if (context.bitlen > context.maxbitlen) {
+    context.bitlen = context.maxbitlen;
+  }
   auto psi_type = context.analytics_type;
   bool standard_if = (psi_type == ENCRYPTO::PsiAnalyticsContext::THRESHOLD ||
                       psi_type == ENCRYPTO::PsiAnalyticsContext::SUM ||
@@ -141,11 +144,11 @@ uint64_t run_psi_analytics(const std::vector<std::uint64_t> &inputs, PsiAnalytic
 
   // share inputs in ABY
   if (context.role == SERVER) {
-    s_in_server = share_ptr(bc->PutSIMDINGate(bins.size(), bins.data(), context.maxbitlen, SERVER));
-    s_in_client = share_ptr(bc->PutDummySIMDINGate(bins.size(), context.maxbitlen));
+    s_in_server = share_ptr(bc->PutSIMDINGate(bins.size(), bins.data(), context.bitlen, SERVER));
+    s_in_client = share_ptr(bc->PutDummySIMDINGate(bins.size(), context.bitlen));
   } else {
-    s_in_server = share_ptr(bc->PutDummySIMDINGate(bins.size(), context.maxbitlen));
-    s_in_client = share_ptr(bc->PutSIMDINGate(bins.size(), bins.data(), context.maxbitlen, CLIENT));
+    s_in_server = share_ptr(bc->PutDummySIMDINGate(bins.size(), context.bitlen));
+    s_in_client = share_ptr(bc->PutSIMDINGate(bins.size(), bins.data(), context.bitlen, CLIENT));
   }
 
   auto s_eq = share_ptr(bc->PutEQGate(s_in_server.get(), s_in_client.get()));
@@ -314,19 +317,19 @@ uint64_t run_psi_analyticsAB(const std::vector<std::uint64_t> &inputs, PsiAnalyt
   // share inputs in ABY
   if (context.role == SERVER) {
     s_in_server_1 =
-        share_ptr(bc->PutSIMDINGate(bins1.size(), bins1.data(), context.maxbitlen, SERVER));
+        share_ptr(bc->PutSIMDINGate(bins1.size(), bins1.data(), context.bitlen, SERVER));
     s_in_server_2 =
-        share_ptr(bc->PutSIMDINGate(bins2.size(), bins2.data(), context.maxbitlen, SERVER));
-    s_in_client_1 = share_ptr(bc->PutDummySIMDINGate(bins1.size(), context.maxbitlen));
-    s_in_client_2 = share_ptr(bc->PutDummySIMDINGate(bins2.size(), context.maxbitlen));
+        share_ptr(bc->PutSIMDINGate(bins2.size(), bins2.data(), context.bitlen, SERVER));
+    s_in_client_1 = share_ptr(bc->PutDummySIMDINGate(bins1.size(), context.bitlen));
+    s_in_client_2 = share_ptr(bc->PutDummySIMDINGate(bins2.size(), context.bitlen));
     s_in_payload_a = share_ptr(bc->PutDummySIMDINGate(bins1.size(), context.payload_bitlen));
   } else {
-    s_in_server_1 = share_ptr(bc->PutDummySIMDINGate(bins1.size(), context.maxbitlen));
-    s_in_server_2 = share_ptr(bc->PutDummySIMDINGate(bins2.size(), context.maxbitlen));
+    s_in_server_1 = share_ptr(bc->PutDummySIMDINGate(bins1.size(), context.bitlen));
+    s_in_server_2 = share_ptr(bc->PutDummySIMDINGate(bins2.size(), context.bitlen));
     s_in_client_1 =
-        share_ptr(bc->PutSIMDINGate(bins1.size(), bins1.data(), context.maxbitlen, CLIENT));
+        share_ptr(bc->PutSIMDINGate(bins1.size(), bins1.data(), context.bitlen, CLIENT));
     s_in_client_2 =
-        share_ptr(bc->PutSIMDINGate(bins2.size(), bins2.data(), context.maxbitlen, CLIENT));
+        share_ptr(bc->PutSIMDINGate(bins2.size(), bins2.data(), context.bitlen, CLIENT));
     s_in_payload_a = share_ptr(
         bc->PutSIMDINGate(payload_a.size(), payload_a.data(), context.payload_bitlen, CLIENT));
   }
@@ -605,7 +608,7 @@ std::vector<uint64_t> OpprgPsiServer(const std::vector<uint64_t> &elements,
   std::vector<uint64_t> content_of_bins(context.nbins);
   std::random_device urandom("/dev/urandom");
   std::uniform_int_distribution<uint64_t> dist(0,
-                                               (1ull << context.maxbitlen) - 1);  // [0,2^elebitlen)
+                                               (1ull << context.bitlen) - 1);  // [0,2^elebitlen)
 
   // T set.
   // generate random numbers to use for mapping the polynomial to
@@ -825,7 +828,7 @@ std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiServerAB(
 
   std::random_device urandom("/dev/urandom");
   std::uniform_int_distribution<uint64_t> dist(0,
-                                               (1ull << context.maxbitlen) - 1);  // [0,2^elebitlen)
+                                               (1ull << context.bitlen) - 1);  // [0,2^elebitlen)
 
   // T set.
   // generate random numbers to use for mapping the polynomial to
@@ -878,7 +881,7 @@ std::vector<std::pair<uint64_t, uint64_t>> OpprgPsiServerAB(
 
   // std::random_device urandom("/dev/urandom");
   // std::uniform_int_distribution<uint64_t> dist(0,
-  //                                              (1ull << context.maxbitlen) - 1);  //
+  //                                              (1ull << context.bitlen) - 1);  //
   //                                              [0,2^elebitlen)
 
   // T set.
@@ -973,7 +976,7 @@ void InterpolatePolynomialsPaddedWithDummies(
     std::vector<std::vector<uint64_t>>::const_iterator masks_for_elems_in_bin,
     std::size_t nbins_in_megabin, PsiAnalyticsContext &context) {
   std::uniform_int_distribution<std::uint64_t> dist(0,
-                                                    (1ull << context.maxbitlen) - 1);  // [0,2^61)
+                                                    (1ull << context.bitlen) - 1);  // [0,2^61)
   std::random_device urandom("/dev/urandom");
   auto my_rand = [&urandom, &dist]() { return dist(urandom); };
 
