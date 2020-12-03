@@ -1038,8 +1038,9 @@ std::unique_ptr<CSocket> EstablishConnection(const std::string &address, uint16_
   } else {
     socket = Connect(address.c_str(), port);
     auto retry = 1;
-    while (socket == nullptr && retry <=3) {
-      std::cerr << "Retry "<< retry <<" of 3" << std::endl;
+    while (socket == nullptr && retry <=10) {
+      std::cerr << "Retry "<< retry <<" of 10 after "<<retry*3 <<"sec backoff cooldown" << std::endl;
+      usleep(retry*2);
       socket = Connect(address.c_str(), port);
       retry = retry + 1;
     }
