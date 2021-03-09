@@ -1,3 +1,49 @@
+# OPPRF-PSI for Android
+This is the android port of the original OPPRF-PSI protocol implementation.
+The non android related changes are also in
+[original-opprf]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/original-opprf}
+The original readme is in section OPPRF-PSI below.
+
+## Changes necessary for android.
+Enable only SIMPLEST_OT disable ENABLE_SSE. 
+Disable/Remove all x86 intrinsics, unless they can be
+ported by means of [sse2neon]{https://github.com/DLTcollab/sse2neon} header
+files. Use the ANDROID_STL:STRING=c++_shared.
+## Dependencies
+All dependencies were built against android using Android NDK. Changes to
+CMakeLists.txt include variables that are pointing to android ports of
+dependencies.
+
+Check out notes in `Logbuch-BuildLibs` and `road-to-android.txt` for more
+information.
+
+Build the following (forked) projectrs against Android with NDK for your target ABI:
+
+* Boost libaries
+* GMP
+* OpenSSL
+* [ABY]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/aby-android}
+* [Encrypto_utils]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/android-encrypto_utils}
+* [libOTe]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/android-libote}
+* [NTL]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/ntl-android} 
+* [OTExtension]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/android-otextension}
+* [cryptoTools]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/cryptotools}
+* [HashingTables]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/android-hashingtables}
+
+Make sure the same SSE and intrinsics are disabled or ported for all dependencies.
+
+## Build
+To build, configure cmake to use Android NDK compilers for cross-compilation.
+Configure all dependencies library dirs, ABI and SDK versions.
+
+All changes to CMakeLists.txt are committed, but do point to local GMP, boost
+and openssl binaries.
+
+Configure cmake files and run the compilation as described below with the additional
+parameters. Use the install dir parameter and cmake install command to place all
+library output files in a desired directory to put them in the right place in
+the AndroidStudioProject directory for the App building.
+
 # OPPRF-PSI [![Build Status](https://travis-ci.org/encryptogroup/OPPRF-PSI.svg?branch=master)](https://travis-ci.org/encryptogroup/OPPRF-PSI)
 
 An implementation of the first cirucit-based private set 
