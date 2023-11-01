@@ -1,7 +1,9 @@
 # OPPRF-PSI for Android
 This is the android port of the original OPPRF-PSI protocol implementation.
-The non android related changes are also in
-[original-opprf]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/original-opprf}
+It was created as part of my master thesis. 
+Therefore there is a bunch of notes for myself that were created duing the build/implementation process.
+Some links still link to the gitlab I used, but the submodules were changed to link to the original github repositories.
+
 The original readme is in section OPPRF-PSI below.
 
 ## Changes necessary for android.
