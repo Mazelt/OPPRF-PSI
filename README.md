@@ -1,7 +1,8 @@
 # OPPRF-PSI for Android
 This is the android port of the original OPPRF-PSI protocol implementation.
-It was created as part of my master thesis. 
-Therefore there is a bunch of notes for myself that were created duing the build/implementation process.
+It was used for the paper [Circuit-based PSI for Covid-19 Risk Scoring](https://www.computer.org/csdl/proceedings-article/ipccc/2021/09679360/1AjTpCJji6c) by Reichert, Pazelt and Scheuermann [PDF](https://eprint.iacr.org/2021/1475).
+
+It still contains a bunch of notes for myself that were created duing the build/implementation process.
 Some links still link to the gitlab I used, but the submodules were changed to link to the original github repositories.
 
 The original readme is in section OPPRF-PSI below.
@@ -9,7 +10,7 @@ The original readme is in section OPPRF-PSI below.
 ## Changes necessary for android.
 Enable only SIMPLEST_OT disable ENABLE_SSE. 
 Disable/Remove all x86 intrinsics, unless they can be
-ported by means of [sse2neon]{https://github.com/DLTcollab/sse2neon} header
+ported by means of [sse2neon](https://github.com/DLTcollab/sse2neon) header
 files. Use the ANDROID_STL:STRING=c++_shared.
 ## Dependencies
 All dependencies were built against android using Android NDK. Changes to
@@ -24,13 +25,13 @@ Build the following (forked) projectrs against Android with NDK for your target 
 * Boost libaries
 * GMP
 * OpenSSL
-* [ABY]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/aby-android}
-* [Encrypto_utils]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/android-encrypto_utils}
-* [libOTe]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/android-libote}
-* [NTL]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/ntl-android} 
-* [OTExtension]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/android-otextension}
-* [cryptoTools]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/cryptotools}
-* [HashingTables]{https://gitlab.informatik.hu-berlin.de/ti/theses/student-content/pazelt-marcel-ma/android-hashingtables}
+* ABY
+* Encrypto_utils
+* libOTe
+* NTL
+* OTExtension
+* cryptoTools
+* HashingTables
 
 Make sure the same SSE and intrinsics are disabled or ported for all dependencies.
 
